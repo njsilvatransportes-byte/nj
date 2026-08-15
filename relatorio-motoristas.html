@@ -1,0 +1,211 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Relatório de Motoristas</title><link rel="stylesheet" href="styles.css">
+<style>
+body{background:#f6f8fb}
+.report{padding:36px;max-width:1400px;margin:auto}
+.back-link{display:inline-block;margin-bottom:24px;text-decoration:none;font-weight:500;font-size:14px;padding:10px 16px}
+.filters{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;background:#fff;padding:20px;border:1px solid #e5e7eb;border-radius:10px;margin:20px 0}
+.filters label{display:grid;gap:6px;font-weight:600;font-size:13px}
+.filters input,.filters select{border:1px solid #d6dbe2;border-radius:8px;padding:10px 12px;font-size:13px;color:#1f2937;background:#fff}
+.filter-actions{grid-column:1/-1;display:flex;gap:10px;align-items:center;padding-top:6px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:20px 0}
+.stat{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:20px}
+.stat span{color:#64748b;font-size:13px;display:block}
+.stat strong{display:block;font-size:26px;font-weight:800;color:#102a43;margin-top:6px}
+.stat.blue strong{color:#1261a0}
+.stat.green strong{color:#187444}
+.stat.orange strong{color:#a15d00}
+.stat.red strong{color:#b42318}
+.table-wrap{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:13px 16px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:13px}
+th{color:#64748b;font-weight:600;background:#fafbfc;white-space:nowrap}
+.badge{font-size:11px;font-weight:700;border-radius:999px;padding:4px 10px}
+.badge.ativo{color:#187444;background:#e9f8ef}
+.badge.pendente{color:#a15d00;background:#fff3db}
+.badge.inativo{color:#667085;background:#eef0f3}
+.badge.vencida{color:#b42318;background:#fee2e2}
+.badge.avencer{color:#92400e;background:#fef3c7}
+.badge.ok{color:#187444;background:#e9f8ef}
+.empty{text-align:center;padding:40px;color:#64748b}
+@page{size:A4 landscape;margin:12mm}
+@media print{.filters,.back-link,.filter-actions{display:none!important}.report{padding:0;max-width:none}.stats{display:grid!important}th,td{font-size:10px;padding:7px}.table-wrap{border:0}}
+@media(max-width:800px){.filters{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.report{padding:18px}}
+</style>
+<body>
+<main class="report">
+  <a href="index.html" class="button button-secondary back-link">&larr; Voltar para a página inicial</a>
+  <p class="eyebrow">RELATÓRIOS</p>
+  <h1>Relatório de Motoristas</h1>
+
+  <section class="filters">
+    <label>Motorista
+      <input id="f-name" type="search" placeholder="Buscar por nome ou CPF">
+    </label>
+    <label>Status
+      <select id="f-status">
+        <option value="">Todos</option>
+        <option value="Ativo">Ativo</option>
+        <option value="Pendente">Pendente</option>
+        <option value="Inativo">Inativo</option>
+      </select>
+    </label>
+    <label>Documentação
+      <select id="f-doc">
+        <option value="">Todas</option>
+        <option value="pendente">Pendente</option>
+        <option value="ok">Em dia</option>
+      </select>
+    </label>
+    <label>CNH
+      <select id="f-cnh">
+        <option value="">Todas</option>
+        <option value="vencida">Vencida</option>
+        <option value="30">A vencer em 30 dias</option>
+        <option value="60">A vencer em 60 dias</option>
+        <option value="90">A vencer em 90 dias</option>
+        <option value="ok">Dentro do prazo</option>
+      </select>
+    </label>
+    <div class="filter-actions">
+      <button class="button button-secondary" id="btn-clear">Limpar filtros</button>
+      <button class="button button-primary" onclick="window.print()">Imprimir / PDF</button>
+    </div>
+  </section>
+
+  <section class="stats">
+    <article class="stat blue"><span>Total de motoristas</span><strong id="s-total">0</strong></article>
+    <article class="stat green"><span>Ativos</span><strong id="s-ativos">0</strong></article>
+    <article class="stat orange"><span>Pendentes</span><strong id="s-pendentes">0</strong></article>
+    <article class="stat red"><span>CNH vencida / a vencer</span><strong id="s-cnh">0</strong></article>
+  </section>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Motorista</th>
+          <th>CPF</th>
+          <th>CNH</th>
+          <th>Categoria</th>
+          <th>Vencimento CNH</th>
+          <th>Status CNH</th>
+          <th>Telefone</th>
+          <th>Status</th>
+          <th>Documentação</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p class="empty" id="empty" style="display:none">Nenhum motorista encontrado com os filtros selecionados.</p>
+  </div>
+</main>
+
+<script>
+let all = [];
+
+function fmtDate(v){
+  const s = String(v||'').slice(0,10);
+  if(!s) return '-';
+  const[y,m,d] = s.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function cnhStatus(expiryStr){
+  if(!expiryStr) return {label:'Sem data', cls:'pendente'};
+  const [y,m,d] = String(expiryStr).slice(0,10).split('-');
+  const exp = new Date(y, m-1, d);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const in60 = new Date(today); in60.setDate(today.getDate()+60);
+  if(exp < today) return {label:'Vencida', cls:'vencida'};
+  if(exp <= in60) return {label:'A vencer', cls:'avencer'};
+  return {label:'Em dia', cls:'ok'};
+}
+
+function q(s){ return document.querySelector(s); }
+
+function render(){
+  const name  = q('#f-name').value.toLowerCase().trim();
+  const status= q('#f-status').value;
+  const doc   = q('#f-doc').value;
+  const cnh   = q('#f-cnh').value;
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const list = all.filter(x => {
+    if(name && !`${x.name} ${x.cpf}`.toLowerCase().includes(name)) return false;
+    if(status && x.status !== status) return false;
+    if(doc){
+      const isPendente = x.status === 'Pendente';
+      if(doc === 'pendente' && !isPendente) return false;
+      if(doc === 'ok' && isPendente) return false;
+    }
+    if(cnh){
+      const [y,m,d] = String(x.expiry||'').slice(0,10).split('-');
+      const exp = y ? new Date(y, m-1, d) : null;
+      if(cnh === 'vencida'){
+        if(!exp || exp >= today) return false;
+      } else if(cnh === 'ok'){
+        const in60 = new Date(today); in60.setDate(today.getDate()+60);
+        if(!exp || exp < today || exp <= in60) return false;
+      } else {
+        const days = Number(cnh);
+        const limit = new Date(today); limit.setDate(today.getDate()+days);
+        if(!exp || exp < today || exp > limit) return false;
+      }
+    }
+    return true;
+  });
+
+  // Atualiza cards
+  const allCount  = list.length;
+  const ativos    = list.filter(x=>x.status==='Ativo').length;
+  const pendentes = list.filter(x=>x.status==='Pendente').length;
+  const cnhProb   = list.filter(x=>{
+    const st = cnhStatus(x.expiry);
+    return st.cls==='vencida'||st.cls==='avencer';
+  }).length;
+  q('#s-total').textContent    = allCount;
+  q('#s-ativos').textContent   = ativos;
+  q('#s-pendentes').textContent= pendentes;
+  q('#s-cnh').textContent      = cnhProb;
+
+  if(list.length === 0){
+    q('#rows').innerHTML = '';
+    q('#empty').style.display = 'block';
+    return;
+  }
+  q('#empty').style.display = 'none';
+
+  q('#rows').innerHTML = list.map(x => {
+    const cs = cnhStatus(x.expiry);
+    const stCls = x.status==='Ativo'?'ativo':x.status==='Pendente'?'pendente':'inativo';
+    const docCls = x.status==='Pendente'?'pendente':'ok';
+    const docLabel = x.status==='Pendente'?'Pendente':'Em dia';
+    return `<tr>
+      <td style="font-weight:600">${x.name}</td>
+      <td>${x.cpf||'-'}</td>
+      <td>${x.cnh||'-'}</td>
+      <td>${x.category||'-'}</td>
+      <td>${fmtDate(x.expiry)}</td>
+      <td><span class="badge ${cs.cls}">${cs.label}</span></td>
+      <td>${x.phone||'-'}</td>
+      <td><span class="badge ${stCls}">${x.status}</span></td>
+      <td><span class="badge ${docCls}">${docLabel}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+fetch('/api/drivers')
+  .then(r=>r.json())
+  .then(data=>{
+    all = data;
+    render();
+  });
+
+document.querySelectorAll('.filters input, .filters select').forEach(el=>el.addEventListener('input', render));
+q('#btn-clear').addEventListener('click',()=>{
+  document.querySelectorAll('.filters input,.filters select').forEach(el=>el.value='');
+  render();
+});
+</script>
+<script src="timeout.js"></script>
+</body></html>

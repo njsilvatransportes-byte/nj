@@ -1,0 +1,117 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Usuários</title><link rel="stylesheet" href="styles.css">
+<style>
+body{background:#f6f8fb}
+.topbar{position:sticky;top:0;z-index:1000;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 36px;display:flex;justify-content:flex-start;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.topbar a{display:inline-flex;align-items:center;text-decoration:none;padding:9px 14px;border-radius:7px;font-weight:700;background:#eef2f6;color:#1f2937}
+.page{padding:36px;width:100%;box-sizing:border-box}
+.badge{font-size:11px;font-weight:700;border-radius:999px;padding:4px 10px;display:inline-block}
+.badge.approved{color:#187444;background:#e9f8ef}
+.badge.pending{color:#a15d00;background:#fff3db}
+.badge.inactive{color:#667085;background:#eef0f3}
+.actions{display:flex;gap:6px}
+.actions button{border:0;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.btn-approve{background:#e9f8ef;color:#187444}
+.btn-approve:hover{background:#c6f0d9}
+.btn-inactivate{background:#fff3db;color:#a15d00}
+.btn-inactivate:hover{background:#fde8b3}
+.btn-reactivate{background:#eef0f3;color:#1f2937}
+.btn-reactivate:hover{background:#d6dbe2}
+#msg{min-height:20px;font-weight:700;margin-top:10px;font-size:13px}
+</style>
+<body>
+<nav class="topbar"><a href="index.html">← Voltar para a página inicial</a></nav>
+<main class="page">
+  <p class="eyebrow">ADMINISTRAÇÃO</p>
+  <h2>Gerenciamento de Usuários</h2>
+  <p style="color:#64748b;font-size:14px;margin-bottom:20px">Aprovação, ativação e inativação de contas de acesso ao sistema.</p>
+  <p id="msg"></p>
+  <div class="card">
+    <table>
+      <thead><tr><th>Nome</th><th>E-mail</th><th>Nível de Acesso</th><th>Cadastrado em</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody id="r"></tbody>
+    </table>
+  </div>
+</main>
+<script>
+const q=s=>document.querySelector(s);
+function showMsg(txt,err=false){q('#msg').textContent=txt;q('#msg').style.color=err?'#b42318':'#187444';}
+function fmtDate(v){const s=String(v||'').slice(0,10);if(!s)return'-';const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;}
+async function load(){
+  const users=await fetch('/api/users').then(r=>r.json());
+  q('#r').innerHTML=users.map(x=>{
+    let badge,actions='';
+    if(!x.approved){
+      badge='<span class="badge pending">Pendente</span>';
+      actions=`<button class="btn-approve" onclick="approve('${x.id}')">✓ Aprovar</button>`;
+    } else if(x.active===false){
+      badge='<span class="badge inactive">Inativo</span>';
+      actions=`<button class="btn-reactivate" onclick="reactivate('${x.id}')">↩ Reativar</button>`;
+    } else {
+      badge='<span class="badge approved">Ativo</span>';
+      actions=`<button class="btn-inactivate" onclick="inactivate('${x.id}')">⊘ Inativar</button>`;
+    }
+    if (x.has_pending_password) {
+      badge += '<br><span class="badge pending" style="margin-top:4px">Senha pendente</span>';
+      actions += ` <button class="btn-approve" onclick="approvePassword('${x.id}')">✓ Aprovar Senha</button> <button class="btn-inactivate" onclick="rejectPassword('${x.id}')">⊘ Recusar Senha</button>`;
+    }
+    return `<tr>
+      <td style="font-weight:600">${x.name}</td>
+      <td>${x.email}</td>
+      <td>
+        <select onchange="changeRole('${x.id}', this.value)" style="padding:4px; border-radius:4px; border:1px solid #ccc; font-size:12px; background:#fff; color:#1f2937;">
+          <option value="Operador" ${x.role==='Operador'?'selected':''}>Operador</option>
+          <option value="Supervisor" ${x.role==='Supervisor'?'selected':''}>Supervisor</option>
+          <option value="Administrador" ${x.role==='Administrador'?'selected':''}>Administrador</option>
+        </select>
+      </td>
+      <td>${fmtDate(x.created_at)}</td>
+      <td>${badge}</td>
+      <td class="actions">${actions}</td>
+    </tr>`;
+  }).join('');
+}
+async function approve(id){
+  await fetch('/api/users/'+id+'/approve',{method:'PUT'});
+  showMsg('Usuário aprovado com sucesso.');
+  load();
+}
+async function inactivate(id){
+  if(!confirm('Tem certeza que deseja inativar este usuário? Ele não poderá mais acessar o sistema.')) return;
+  await fetch('/api/users/'+id+'/inactivate',{method:'PUT'});
+  showMsg('Usuário inativado. O acesso foi bloqueado.');
+  load();
+}
+async function reactivate(id){
+  await fetch('/api/users/'+id+'/reactivate',{method:'PUT'});
+  showMsg('Usuário reativado com sucesso.');
+  load();
+}
+async function approvePassword(id){
+  await fetch('/api/users/'+id+'/approve-password',{method:'PUT'});
+  showMsg('Nova senha aprovada com sucesso.');
+  load();
+}
+async function rejectPassword(id){
+  if(!confirm('Tem certeza que deseja recusar a nova senha solicitada?')) return;
+  await fetch('/api/users/'+id+'/reject-password',{method:'PUT'});
+  showMsg('Solicitação de nova senha recusada.');
+  load();
+}
+async function changeRole(id, role){
+  try {
+    const res = await fetch('/api/users/'+id+'/role',{
+      method:'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({role})
+    });
+    if (!res.ok) throw new Error('Falha ao atualizar nível de acesso.');
+    showMsg('Nível de acesso atualizado com sucesso.');
+  } catch (err) {
+    showMsg(err.message, true);
+    load();
+  }
+}
+load();
+</script>
+<script src="timeout.js"></script>
+</body></html>

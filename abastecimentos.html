@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Abastecimentos</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+body{background:#f6f8fb}
+.topbar{position:sticky;top:0;z-index:1000;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 36px;display:flex;justify-content:flex-start;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.topbar a{display:inline-flex;align-items:center;text-decoration:none;padding:9px 14px;border-radius:7px;font-weight:700;background:#eef2f6;color:#1f2937}
+.sticky-actions{position:sticky;bottom:0;z-index:900;background:#fff;border-top:1px solid #e5e7eb;padding:12px 0;margin-top:8px;display:flex;gap:8px;box-shadow:0 -2px 8px rgba(0,0,0,.05)}
+
+.page{padding:36px}
+.card{max-width:none;padding:28px}
+.form-stack{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.form-stack button{grid-column:1;justify-self:start;padding:9px 14px}
+.actions{display:flex;gap:8px;align-items:center}
+.actions button{border:0;background:transparent;font-weight:700;cursor:pointer;padding:5px 7px}
+.actions .edit{color:var(--blue)}
+.actions .delete{color:#b42318}
+#form-title{margin-bottom:18px}
+#cancel-edit{display:none}
+#msg{min-height:22px}
+@media(max-width:700px){.form-stack{grid-template-columns:1fr}.topbar{padding:10px 16px}.sticky-actions{flex-wrap:wrap}.sticky-actions button{flex:1;min-width:170px}}
+</style>
+<body>
+<nav class="topbar">
+  <a href="index.html">← Voltar para a página inicial</a>
+</nav>
+<main class="page">
+<section class="card">
+<p class="eyebrow">LANÇAMENTOS</p>
+<h2 id="form-title">Novo abastecimento</h2>
+<form id="f" class="form-stack">
+<input type="hidden" name="id" id="fueling-id">
+<label>Data<input name="date" type="date" required></label>
+<label>Placa<select name="vehicle_id" id="v" required></select></label>
+<label>Kilometragem<input name="mileage" type="number"></label>
+<label>Preço por litro<input name="price_per_liter" type="number" step=".01"></label>
+<label>Quantidade de litros<input name="quantity_liters" type="number" step=".01"></label>
+<label>Motorista<select name="driver_id" id="d" required></select></label>
+<label>Posto<select name="station_id" id="s" required></select></label>
+<label>Observações<textarea name="notes"></textarea></label>
+<div class="sticky-actions">
+<button id="save-button" class="button button-primary" type="submit">Salvar abastecimento</button>
+<button id="cancel-edit" class="button button-secondary" type="button">Cancelar edição</button>
+</div>
+</form>
+<p id="msg" style="font-weight:700"></p>
+<hr>
+<h2>Abastecimentos cadastrados</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Data</th><th>Placa</th><th>Motorista</th><th>Posto</th><th>Kilometragem</th><th>Preço/L</th><th>Litros</th><th>Observações</th><th>Ações</th></tr></thead>
+<tbody id="list"></tbody>
+</table>
+</div>
+</section>
+</main>
+
+<script>
+const q=s=>document.querySelector(s);
+let fuelings=[];
+
+function esc(value){
+  return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function l(u,e,k){
+  const response=await fetch('/api/'+u);
+  if(!response.ok) throw new Error('Não foi possível carregar os dados.');
+  const a=await response.json();
+  q(e).innerHTML='<option value="">Selecione</option>'+a.map(x=>'<option value="'+esc(x.id)+'">'+esc(x[k])+'</option>').join('');
+}
+
+function money(value){
+  if(value === null || value === undefined || value === '') return '-';
+  return 'R$ '+Number(value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function fmtDate(v){
+  const s=String(v||'').slice(0,10);
+  if(!s) return '-';
+  const [y,m,d]=s.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function showMessage(text, error=false){
+  q('#msg').textContent=text;
+  q('#msg').style.color=error?'#b42318':'#187444';
+}
+
+async function load(){
+  const response=await fetch('/api/fuelings');
+  if(!response.ok) throw new Error('Não foi possível carregar os abastecimentos.');
+  fuelings=await response.json();
+  q('#list').innerHTML=fuelings.map(x=>`
+    <tr>
+      <td>${fmtDate(x.date)}</td>
+      <td>${esc(x.plate||'-')}</td>
+      <td>${esc(x.driver_name||'-')}</td>
+      <td>${esc(x.station_name||'-')}</td>
+      <td>${esc(x.mileage ?? '-')}</td>
+      <td>${money(x.price_per_liter)}</td>
+      <td>${esc(x.quantity_liters ?? '-')}</td>
+      <td>${esc(x.notes||'')}</td>
+      <td class="actions">
+        <button class="edit" type="button" onclick="editFueling('${esc(x.id)}')">Editar</button>
+        <button class="delete" type="button" onclick="deleteFueling('${esc(x.id)}')">Excluir</button>
+      </td>
+    </tr>`).join('');
+}
+
+function startEdit(item){
+  q('#fueling-id').value=item.id;
+  q('#f').elements.date.value=(item.date||'').slice(0,10);
+  q('#v').value=item.vehicle_id||'';
+  q('#f').elements.mileage.value=item.mileage??'';
+  q('#f').elements.price_per_liter.value=item.price_per_liter??'';
+  q('#f').elements.quantity_liters.value=item.quantity_liters??'';
+  q('#d').value=item.driver_id||'';
+  q('#s').value=item.station_id||'';
+  q('#f').elements.notes.value=item.notes||'';
+  q('#form-title').textContent='Editar abastecimento';
+  q('#save-button').textContent='Salvar alterações';
+  q('#cancel-edit').style.display='inline-block';
+  showMessage('Editando o abastecimento selecionado.');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+window.editFueling=function(id){
+  const item=fuelings.find(x=>String(x.id)===String(id));
+  if(item) startEdit(item);
+};
+
+function cancelEdit(){
+  q('#f').reset();
+  q('#fueling-id').value='';
+  q('#form-title').textContent='Novo abastecimento';
+  q('#save-button').textContent='Salvar abastecimento';
+  q('#cancel-edit').style.display='none';
+}
+
+window.deleteFueling=async function(id){
+  const item=fuelings.find(x=>String(x.id)===String(id));
+  if(!item) return;
+  const descricao=`${item.date||''} - ${item.plate||'sem placa'} - ${item.driver_name||'sem motorista'}`;
+  if(!confirm('Tem certeza que deseja excluir este abastecimento?\\n\\n'+descricao)) return;
+  try{
+    const s = JSON.parse(localStorage.getItem('nj_session')||'null');
+    const response=await fetch('/api/fuelings/'+encodeURIComponent(id),{method:'DELETE', headers: s ? {'X-User-Id':s.id, 'X-User-Name':encodeURIComponent(s.name)} : {}});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error||'Não foi possível excluir.');
+    if(String(q('#fueling-id').value)===String(id)) cancelEdit();
+    showMessage('Abastecimento excluído com sucesso.');
+    await load();
+  }catch(error){
+    showMessage(error.message,true);
+  }
+};
+
+q('#cancel-edit').onclick=cancelEdit;
+
+q('#f').onsubmit=async e=>{
+  e.preventDefault();
+  const id=q('#fueling-id').value;
+  const data=Object.fromEntries(new FormData(e.target));
+  delete data.id;
+  try{
+    const s = JSON.parse(localStorage.getItem('nj_session')||'null');
+    const response=await fetch('/api/fuelings'+(id?'/'+encodeURIComponent(id):''),{
+      method:id?'PUT':'POST',
+      headers:{'Content-Type':'application/json', ...(s ? {'X-User-Id':s.id, 'X-User-Name':encodeURIComponent(s.name)} : {})},
+      body:JSON.stringify(data)
+    });
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(result.error||'Não foi possível salvar o abastecimento.');
+    cancelEdit();
+    showMessage(id?'Abastecimento atualizado com sucesso!':'Abastecimento salvo com sucesso!');
+    await load();
+  }catch(error){
+    showMessage(error.message,true);
+  }
+};
+
+Promise.all([
+  l('vehicles','#v','plate'),
+  l('drivers','#d','name'),
+  l('partner_stations','#s','name'),
+  load()
+]).catch(error=>showMessage(error.message,true));
+</script>
+<script src="timeout.js"></script></body>
+</html>
