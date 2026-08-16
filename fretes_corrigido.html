@@ -61,7 +61,7 @@
         </label>
 
         <label>Destino
-          <input name="destination" required oninput="this.value=this.value.toUpperCase()">
+          <input name="destination" required>
         </label>
 
         <label>Frete
@@ -126,13 +126,6 @@
       });
     }
 
-    function fmtDate(v){
-      const s = String(v||'').slice(0,10);
-      if(!s) return '-';
-      const [y,m,d] = s.split('-');
-      return `${d}/${m}/${y}`;
-    }
-
     function showMessage(text, error=false){
       q('#msg').textContent = text;
       q('#msg').style.color = error ? '#b42318' : '#187444';
@@ -155,7 +148,7 @@
 
       q('#list').innerHTML = fretes.map(x => `
         <tr>
-          <td>${fmtDate(x.date)}</td>
+          <td>${esc(x.date)}</td>
           <td>${esc(x.driver_name || '-')}</td>
           <td>${esc(x.plate || '-')}</td>
           <td>${esc(x.client_name || '-')}</td>
@@ -216,10 +209,9 @@
       if(!confirm('Tem certeza que deseja excluir este frete?\n\n' + descricao)) return;
 
       try{
-        const s = JSON.parse(localStorage.getItem('nj_session')||'null');
         const response = await fetch(
           '/api/freight_entries/' + encodeURIComponent(id),
-          {method:'DELETE', headers: s ? {'X-User-Id':s.id, 'X-User-Name':encodeURIComponent(s.name)} : {}}
+          {method:'DELETE'}
         );
 
         const data = await response.json().catch(() => ({}));
@@ -246,12 +238,11 @@
       delete data.id;
 
       try{
-        const s = JSON.parse(localStorage.getItem('nj_session')||'null');
         const response = await fetch(
           '/api/freight_entries' + (id ? '/' + encodeURIComponent(id) : ''),
           {
             method: id ? 'PUT' : 'POST',
-            headers: {'Content-Type':'application/json', ...(s ? {'X-User-Id':s.id, 'X-User-Name':encodeURIComponent(s.name)} : {})},
+            headers: {'Content-Type':'application/json'},
             body: JSON.stringify(data)
           }
         );
