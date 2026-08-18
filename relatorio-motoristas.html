@@ -1,7 +1,7 @@
 <!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Relatório de Motoristas</title><link rel="stylesheet" href="styles.css">
 <style>
 body{background:#f6f8fb}
-.report{padding:36px;max-width:1400px;margin:auto}
+.report{padding:36px;max-width:1400px;margin:0 auto}
 .back-link{display:inline-block;margin-bottom:24px;text-decoration:none;font-weight:500;font-size:14px;padding:10px 16px}
 .filters{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;background:#fff;padding:20px;border:1px solid #e5e7eb;border-radius:10px;margin:20px 0}
 .filters label{display:grid;gap:6px;font-weight:600;font-size:13px}
@@ -13,7 +13,7 @@ body{background:#f6f8fb}
 .stat strong{display:block;font-size:26px;font-weight:800;color:#102a43;margin-top:6px}
 .stat.blue strong{color:#1261a0}
 .stat.green strong{color:#187444}
-.stat.orange strong{color:#a15d00}
+.stat-orange strong{color:#a15d00}
 .stat.red strong{color:#b42318}
 .table-wrap{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:auto}
 table{width:100%;border-collapse:collapse}
@@ -53,13 +53,13 @@ th{color:#64748b;font-weight:600;background:#fafbfc;white-space:nowrap}
       <select id="f-doc">
         <option value="">Todas</option>
         <option value="pendente">Pendente</option>
-        <option value="ok">Em dia</option>
+        <option value="ok">Em dia</option>>
       </select>
     </label>
     <label>CNH
       <select id="f-cnh">
         <option value="">Todas</option>
-        <option value="vencida">Vencida</option>
+        <option value="vencida">Vencida</option>>
         <option value="30">A vencer em 30 dias</option>
         <option value="60">A vencer em 60 dias</option>
         <option value="90">A vencer em 90 dias</option>
@@ -75,7 +75,7 @@ th{color:#64748b;font-weight:600;background:#fafbfc;white-space:nowrap}
   <section class="stats">
     <article class="stat blue"><span>Total de motoristas</span><strong id="s-total">0</strong></article>
     <article class="stat green"><span>Ativos</span><strong id="s-ativos">0</strong></article>
-    <article class="stat orange"><span>Pendentes</span><strong id="s-pendentes">0</strong></article>
+    <article class="stat-orange"><span>Pendentes</span><strong id="s-pendentes">0</strong></article>
     <article class="stat red"><span>CNH vencida / a vencer</span><strong id="s-cnh">0</strong></article>
   </section>
 

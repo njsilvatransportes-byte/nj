@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -25,7 +25,7 @@ body{background:#f6f8fb}
 </style>
 <body>
 <nav class="topbar">
-  <a href="index.html">← Voltar para a página inicial</a>
+  <a href="index.html">&larr; Voltar para a página inicial</a>
 </nav>
 <main class="page">
 <section class="card">
@@ -35,7 +35,7 @@ body{background:#f6f8fb}
 <input type="hidden" name="id" id="fueling-id">
 <label>Data<input name="date" type="date" required></label>
 <label>Placa<select name="vehicle_id" id="v" required></select></label>
-<label>Kilometragem<input name="mileage" type="number"></label>
+<label>Quilometragem<input name="mileage" type="number"></label>
 <label>Preço por litro<input name="price_per_liter" type="number" step=".01"></label>
 <label>Quantidade de litros<input name="quantity_liters" type="number" step=".01"></label>
 <label>Motorista<select name="driver_id" id="d" required></select></label>
@@ -51,7 +51,7 @@ body{background:#f6f8fb}
 <h2>Abastecimentos cadastrados</h2>
 <div class="table-wrap">
 <table>
-<thead><tr><th>Data</th><th>Placa</th><th>Motorista</th><th>Posto</th><th>Kilometragem</th><th>Preço/L</th><th>Litros</th><th>Observações</th><th>Ações</th></tr></thead>
+<thead><tr><th>Data</th><th>Placa</th><th>Motorista</th><th>Posto</th><th>Quilometragem</th><th>Preço/L</th><th>Litros</th><th>Média km/l</th><th>Observações</th><th>Ações</th></tr></thead>
 <tbody id="list"></tbody>
 </table>
 </div>
@@ -94,6 +94,17 @@ async function load(){
   const response=await fetch('/api/fuelings');
   if(!response.ok) throw new Error('Não foi possível carregar os abastecimentos.');
   fuelings=await response.json();
+  
+  fuelings.forEach(f => {
+    if (f.mileage && f.quantity_liters) {
+      const prev = fuelings
+        .filter(x => x.vehicle_id === f.vehicle_id && x.mileage < f.mileage)
+        .sort((a, b) => b.mileage - a.mileage)[0];
+      if (prev && prev.mileage) {
+        f.km_per_liter = (f.mileage - prev.mileage) / f.quantity_liters;
+      }
+    }
+  });
   q('#list').innerHTML=fuelings.map(x=>`
     <tr>
       <td>${fmtDate(x.date)}</td>
@@ -103,6 +114,7 @@ async function load(){
       <td>${esc(x.mileage ?? '-')}</td>
       <td>${money(x.price_per_liter)}</td>
       <td>${esc(x.quantity_liters ?? '-')}</td>
+      <td>${x.km_per_liter ? x.km_per_liter.toFixed(2) + ' km/l' : '-'}</td>
       <td>${esc(x.notes||'')}</td>
       <td class="actions">
         <button class="edit" type="button" onclick="editFueling('${esc(x.id)}')">Editar</button>
@@ -174,7 +186,7 @@ q('#f').onsubmit=async e=>{
       body:JSON.stringify(data)
     });
     const result=await response.json().catch(()=>({}));
-    if(!response.ok) throw new Error(result.error||'Não foi possível salvar o abastecimento.');
+    if(!response.ok) throw new Error(result.error||'Não foi possível salvação abastecimento.');
     cancelEdit();
     showMessage(id?'Abastecimento atualizado com sucesso!':'Abastecimento salvo com sucesso!');
     await load();
@@ -192,3 +204,6 @@ Promise.all([
 </script>
 <script src="timeout.js"></script></body>
 </html>
+
+
+

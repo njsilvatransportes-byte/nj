@@ -33,7 +33,7 @@
 </head>
 <body>
   <nav class="topbar">
-    <a href="index.html">← Voltar para a página inicial</a>
+    <a href="index.html">&larr; Voltar para a página inicial</a>
   </nav>
 
   <main class="page">
@@ -72,8 +72,16 @@
           <input name="tolls" type="number" step=".01" value="0">
         </label>
 
-        <label>Despesas
-          <input name="expenses" type="number" step=".01" value="0">
+        <label>SEST/SENAT
+          <input name="sest_senat" type="number" step=".01" value="0">
+        </label>
+
+        <label>IRPJ
+          <input name="irpj" type="number" step=".01" value="0">
+        </label>
+
+        <label>INSS
+          <input name="inss" type="number" step=".01" value="0">
         </label>
 
         <div class="form-actions">
@@ -98,7 +106,9 @@
               <th>Destino</th>
               <th>Frete</th>
               <th>Pedágios</th>
-              <th>Despesas</th>
+              <th>SEST/SENAT</th>
+              <th>IRPJ</th>
+              <th>INSS</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -162,7 +172,9 @@
           <td>${esc(x.destination || '-')}</td>
           <td>${money(x.freight)}</td>
           <td>${money(x.tolls)}</td>
-          <td>${money(x.expenses)}</td>
+          <td>${money(x.sest_senat)}</td>
+          <td>${money(x.irpj)}</td>
+          <td>${money(x.inss)}</td>
           <td class="actions">
             <button class="edit" type="button" onclick="editFrete('${esc(x.id)}')">Editar</button>
             <button class="delete" type="button" onclick="deleteFrete('${esc(x.id)}')">Excluir</button>
