@@ -112,7 +112,7 @@ async function handleUserPhotoFileSelected(file) {
     }
 
     updateUserAvatar();
-  };
+  };
   reader.readAsDataURL(file);
 }
 
@@ -168,13 +168,17 @@ async function showApp() {
   document.querySelectorAll('[data-menu]').forEach(el => {
     const menu = el.getAttribute('data-menu');
     if (role === 'Administrador') {
+      // Administrador: visão geral — todos os menus
       el.style.display = 'block';
     } else if (role === 'Supervisor') {
-      el.style.display = (menu === 'Cadastros' || menu === 'Administração') ? 'block' : 'none';
+      // Supervisor: Cadastros + Lançamentos + Relatórios (sem Administração)
+      el.style.display = (menu === 'Cadastros' || menu === 'Lançamentos' || menu === 'Relatórios') ? 'block' : 'none';
     } else {
+      // Operador: apenas Lançamentos e Relatórios
       el.style.display = (menu === 'Lançamentos' || menu === 'Relatórios') ? 'block' : 'none';
     }
   });
+
   try {
     const [drivers, vehicles] = await Promise.all([api('drivers'), api('vehicles')]);
     localStorage.setItem(keys.drivers, JSON.stringify(drivers));
@@ -184,6 +188,7 @@ async function showApp() {
   }
   switchView(currentView);
 }
+
 $('#logout-button').addEventListener('click', () => { localStorage.removeItem(keys.session); appView.classList.add('hidden'); authView.classList.remove('hidden'); });
 
 function renderDrivers() { const all = get(keys.drivers), query = $('#driver-search').value.toLowerCase(), list = all.filter(item => `${item.name} ${item.cpf}`.toLowerCase().includes(query)); $('#total-drivers').textContent = all.length; $('#active-drivers').textContent = all.filter(item => item.status === 'Ativo').length; $('#pending-drivers').textContent = all.filter(item => item.status === 'Pendente').length; const today = new Date(); today.setHours(0,0,0,0); const in60Days = new Date(today); in60Days.setDate(today.getDate() + 60); window.expiringCnhList = all.filter(item => { if(!item.expiry) return false; const [y, m, d] = item.expiry.split('T')[0].split('-'); if(!y || !m || !d) return false; const expDate = new Date(y, m-1, d); return expDate <= in60Days; }); const expiringElement = $('#expiring-drivers'); if(expiringElement) expiringElement.textContent = window.expiringCnhList.length; $('#drivers-table').innerHTML = list.map(item => { let exp = '-'; if(item.expiry) { const [y, m, d] = item.expiry.split('T')[0].split('-'); exp = `${d}/${m}/${y}`; } const avatarHtml = item.photo ? `<img src="${item.photo}" alt="Foto de ${item.name}" data-photo-view="${item.id}" title="Ver foto" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #e2e8f0;vertical-align:middle;margin-right:8px;cursor:pointer;transition:transform .15s,box-shadow .15s;" onmouseover="this.style.transform='scale(1.15)';this.style.boxShadow='0 4px 12px rgba(0,0,0,.25)'" onmouseout="this.style.transform='';this.style.boxShadow=''">` : `<span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ff9d35,#e76b16);color:#fff;font-weight:700;font-size:14px;vertical-align:middle;margin-right:8px;">${item.name.charAt(0).toUpperCase()}</span>`; return `<tr><td class="driver-cell" style="display:flex;align-items:center;">${avatarHtml}${item.name}</td><td>${item.cpf}</td><td>${item.cnh}</td><td>${item.category}</td><td>${exp}</td><td><span class="badge ${statusClass(item.status)}">${item.status}</span></td><td><button class="table-action" data-edit-driver="${item.id}">Editar</button></td></tr>`; }).join(''); $('#drivers-empty').classList.toggle('hidden', all.length > 0); }
@@ -232,6 +237,7 @@ window.printModalReport = function(tableId, title) {
 </html>`);
   win.document.close();
 };
+
 function renderVehicles() { const all = get(keys.vehicles), query = $('#vehicle-search').value.toLowerCase(), list = all.filter(item => `${item.plate} ${item.model}`.toLowerCase().includes(query)); $('#total-vehicles').textContent = all.length; $('#active-vehicles').textContent = all.filter(item => item.status === 'Em operação').length; $('#maintenance-vehicles').textContent = all.filter(item => item.status === 'Manutenção').length; $('#vehicles-table').innerHTML = list.map(item => `<tr><td class="driver-cell">${item.plate}</td><td>${item.model}</td><td>${item.type}</td><td>${item.year}</td><td><span class="badge ${statusClass(item.status)}">${item.status}</span></td><td><button class="table-action" data-edit-vehicle="${item.id}">Editar</button></td></tr>`).join(''); $('#vehicles-empty').classList.toggle('hidden', all.length > 0); }
 function switchView(view) { if (view === 'clients') return showClients(); currentView = view; const vehicles = view === 'vehicles'; $('#drivers-view').classList.toggle('hidden', vehicles); $('#vehicles-view').classList.toggle('hidden', !vehicles); $('#clients-view').classList.add('hidden'); $('#page-title').textContent = vehicles ? 'Veículos' : 'Motoristas'; $('#new-item-button').textContent = vehicles ? '+ Novo veículo' : '+ Novo motorista'; document.querySelectorAll('[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === view)); vehicles ? renderVehicles() : renderDrivers(); }
 document.querySelectorAll('[data-view]').forEach(link => link.addEventListener('click', event => { event.preventDefault(); switchView(link.dataset.view); }));
@@ -313,4 +319,68 @@ $('#sidebar-toggle').addEventListener('click', () => $('#sidebar').classList.tog
   });
 })();
 
+// ── Hover effects nos cards clicáveis de motoristas ─────────────────────────
+(function addCardHoverEffects() {
+  const cards = [
+    { id: 'total-drivers-card',   color: 'rgba(18,97,160,0.08)' },
+    { id: 'active-drivers-card',  color: 'rgba(22,163,74,0.08)' },
+    { id: 'pending-drivers-card', color: 'rgba(217,119,6,0.08)' },
+    { id: 'expiring-cnh-card',    color: 'rgba(255,179,0,0.12)' }
+  ];
+  cards.forEach(({ id, color }) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.transition = 'transform .15s, box-shadow .15s';
+    el.addEventListener('mouseenter', () => { el.style.transform = 'translateY(-3px)'; el.style.boxShadow = `0 6px 18px ${color}`; });
+    el.addEventListener('mouseleave', () => { el.style.transform = ''; el.style.boxShadow = ''; });
+  });
+})();
+
+// ── Photo Lightbox ──────────────────────────────────────────────────────────
+(function initPhotoLightbox() {
+  const lb = document.createElement('div');
+  lb.id = 'photo-lightbox';
+  lb.innerHTML = `
+    <div id="photo-lightbox-inner">
+      <img id="photo-lightbox-img" src="" alt="Foto do motorista" />
+      <p id="photo-lightbox-name"></p>
+      <button id="photo-lightbox-close" aria-label="Fechar">&times;</button>
+    </div>`;
+  lb.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);align-items:center;justify-content:center;cursor:zoom-out;';
+  document.getElementById('photo-lightbox-inner') && document.body.removeChild(document.getElementById('photo-lightbox'));
+  document.body.appendChild(lb);
+  const style = document.createElement('style');
+  style.textContent = `
+    #photo-lightbox { display:none; }
+    #photo-lightbox.lb-open { display:flex !important; animation: lbFadeIn .2s ease; }
+    @keyframes lbFadeIn { from{opacity:0} to{opacity:1} }
+    #photo-lightbox-inner { position:relative; display:flex; flex-direction:column; align-items:center; gap:14px; }
+    #photo-lightbox-img { max-width:min(420px,90vw); max-height:80vh; border-radius:16px; object-fit:contain; box-shadow:0 24px 64px rgba(0,0,0,.6); border:3px solid rgba(255,255,255,.15); animation:lbImgIn .25s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes lbImgIn { from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
+    #photo-lightbox-name { color:#fff; font-size:16px; font-weight:600; letter-spacing:.01em; text-shadow:0 2px 8px rgba(0,0,0,.5); margin:0; }
+    #photo-lightbox-close { position:absolute; top:-44px; right:-4px; background:rgba(255,255,255,.15); border:none; color:#fff; width:36px; height:36px; border-radius:50%; font-size:22px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s; }
+    #photo-lightbox-close:hover { background:rgba(255,255,255,.3); }`;
+  document.head.appendChild(style);
+  function openLightbox(photoSrc, driverName) { document.getElementById('photo-lightbox-img').src = photoSrc; document.getElementById('photo-lightbox-name').textContent = driverName; lb.classList.add('lb-open'); document.body.style.overflow = 'hidden'; }
+  function closeLightbox() { lb.classList.remove('lb-open'); document.body.style.overflow = ''; }
+  lb.addEventListener('click', closeLightbox);
+  document.getElementById('photo-lightbox-close').addEventListener('click', closeLightbox);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+  document.addEventListener('click', e => {
+    const photoId = e.target.dataset.photoView;
+    if (!photoId) return;
+    const driver = get(keys.drivers).find(d => String(d.id) === String(photoId));
+    if (driver && driver.photo) openLightbox(driver.photo, driver.name);
+  });
+})();
+
 fetch('/api/drivers').then(function(r){var e=document.querySelector('#db-status');if(e)e.innerHTML=r.ok?'<span style="color:#22c55e">&#9679;</span> Banco conectado':'<span style="color:#ef4444">&#9679;</span> Banco desconectado'}).catch(function(){var e=document.querySelector('#db-status');if(e)e.innerHTML='<span style="color:#ef4444">&#9679;</span> Banco desconectado'});
+
+(function initAboutModal() {
+  const aboutBtn = document.getElementById('about-btn');
+  const aboutModal = document.getElementById('about-modal-backdrop');
+  if (aboutBtn && aboutModal) {
+    aboutBtn.addEventListener('click', () => aboutModal.classList.remove('hidden'));
+    aboutModal.addEventListener('click', e => { if (e.target === aboutModal) aboutModal.classList.add('hidden'); });
+  }
+})();
