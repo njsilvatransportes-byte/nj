@@ -76,8 +76,8 @@
           <input name="sest_senat" type="number" step=".01" value="0">
         </label>
 
-        <label>IRPJ
-          <input name="irpj" type="number" step=".01" value="0">
+        <label>IRRF
+          <input name="irrf" type="number" step=".01" value="0">
         </label>
 
         <label>INSS
@@ -107,7 +107,7 @@
               <th>Frete</th>
               <th>Pedágios</th>
               <th>SEST/SENAT</th>
-              <th>IRPJ</th>
+              <th>IRRF</th>
               <th>INSS</th>
               <th>Ações</th>
             </tr>
@@ -173,7 +173,7 @@
           <td>${money(x.freight)}</td>
           <td>${money(x.tolls)}</td>
           <td>${money(x.sest_senat)}</td>
-          <td>${money(x.irpj)}</td>
+          <td>${money(x.irrf)}</td>
           <td>${money(x.inss)}</td>
           <td class="actions">
             <button class="edit" type="button" onclick="editFrete('${esc(x.id)}')">Editar</button>
