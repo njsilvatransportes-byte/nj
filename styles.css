@@ -9,3 +9,7 @@
 #f input[name="destination"] {
   text-transform: uppercase;
 }
+/* Auto-hide sidebar hover */
+.sidebar.collapsed:hover{width:254px;box-shadow:6px 0 18px rgba(0,0,0,.18);position:absolute;height:100vh;z-index:99}
+.sidebar.collapsed:hover .brand-name,.sidebar.collapsed:hover .nav-label{display:inline}
+.sidebar.collapsed:hover .nav-submenu{padding-left:10px}
