@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="pt-BR">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -159,7 +159,7 @@ window.deleteFueling=async function(id){
   const descricao=`${item.date||''} - ${item.plate||'sem placa'} - ${item.driver_name||'sem motorista'}`;
   if(!confirm('Tem certeza que deseja excluir este abastecimento?\\n\\n'+descricao)) return;
   try{
-    const s = JSON.parse(localStorage.getItem('nj_session')||'null');
+    const s = JSON.parse(sessionStorage.getItem('nj_session')||'null');
     const response=await fetch('/api/fuelings/'+encodeURIComponent(id),{method:'DELETE', headers: s ? {'X-User-Id':s.id, 'X-User-Name':encodeURIComponent(s.name)} : {}});
     const data=await response.json().catch(()=>({}));
     if(!response.ok) throw new Error(data.error||'Não foi possível excluir.');
@@ -179,7 +179,7 @@ q('#f').onsubmit=async e=>{
   const data=Object.fromEntries(new FormData(e.target));
   delete data.id;
   try{
-    const s = JSON.parse(localStorage.getItem('nj_session')||'null');
+    const s = JSON.parse(sessionStorage.getItem('nj_session')||'null');
     const response=await fetch('/api/fuelings'+(id?'/'+encodeURIComponent(id):''),{
       method:id?'PUT':'POST',
       headers:{'Content-Type':'application/json', ...(s ? {'X-User-Id':s.id, 'X-User-Name':encodeURIComponent(s.name)} : {})},

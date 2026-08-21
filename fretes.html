@@ -228,7 +228,7 @@
       if(!confirm('Tem certeza que deseja excluir este frete?\n\n' + descricao)) return;
 
       try{
-        const s = JSON.parse(localStorage.getItem('nj_session')||'null');
+        const s = JSON.parse(sessionStorage.getItem('nj_session')||'null');
         const response = await fetch(
           '/api/freight_entries/' + encodeURIComponent(id),
           {method:'DELETE', headers: s ? {'X-User-Id':s.id, 'X-User-Name':encodeURIComponent(s.name)} : {}}
@@ -258,7 +258,7 @@
       delete data.id;
 
       try{
-        const s = JSON.parse(localStorage.getItem('nj_session')||'null');
+        const s = JSON.parse(sessionStorage.getItem('nj_session')||'null');
         const response = await fetch(
           '/api/freight_entries' + (id ? '/' + encodeURIComponent(id) : ''),
           {

@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
@@ -7,7 +7,17 @@
     <meta name="description" content="Dashboard de faturamento de fretes NJTransportes." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    (function initAboutModal() {
+      var aboutBtn = document.getElementById('about-btn');
+      var aboutModal = document.getElementById('about-modal-backdrop');
+      if (aboutBtn && aboutModal) {
+        aboutBtn.addEventListener('click', function() { aboutModal.classList.remove('hidden'); });
+        aboutModal.addEventListener('click', function(e) { if (e.target === aboutModal) aboutModal.classList.add('hidden'); });
+      }
+    })();
+
+</script>
     <link rel="stylesheet" href="styles.css" />
     <style>
       .nav-section-title{display:flex;align-items:center;gap:13px;color:#fff;padding:12px;font-weight:700;font-size:14px;cursor:pointer;user-select:none;border-radius:7px;transition:background .15s}
@@ -22,7 +32,7 @@
       body{font-family:'Inter',Arial,sans-serif}
       .nav-link-dashboard{display:flex;align-items:center;gap:13px;color:#fff;text-decoration:none;padding:12px;border-radius:7px;font-weight:700;font-size:14px;background:rgba(240,138,36,0.2);border-left:3px solid var(--orange);margin-bottom:6px;transition:background .15s}
       .nav-link-dashboard:hover,.nav-link-dashboard.active{background:rgba(240,138,36,0.35)}
-      .dash-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+      .dash-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px}
       .kpi-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px 22px;position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s}
       .kpi-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.08)}
       .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;border-radius:12px 12px 0 0}
@@ -30,6 +40,7 @@
       .kpi-card.green::before{background:linear-gradient(90deg,#16a34a,#4ade80)}
       .kpi-card.orange::before{background:linear-gradient(90deg,#f08a24,#fbbf24)}
       .kpi-card.purple::before{background:linear-gradient(90deg,#7c3aed,#a78bfa)}
+      .kpi-card.teal::before{background:linear-gradient(90deg,#0d9488,#2dd4bf)}
       .kpi-icon{font-size:28px;margin-bottom:8px;display:block}
       .kpi-label{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
       .kpi-value{font-size:26px;font-weight:800;color:var(--navy);line-height:1}
@@ -69,7 +80,7 @@
   <body>    <!-- AUTH SCREEN -->
     <div id="auth-screen">
       <div class="auth-shell">
-        <div class="brand-panel">
+        <div class="brand-panel" style="background:linear-gradient(135deg,rgba(16,42,67,0.82) 0%,rgba(18,97,160,0.65) 100%),url('semi_truck_bg.jpg') center/cover no-repeat;">
           <div>
             <div class="brand"><span class="brand-mark">NJ</span><span style="font-size:22px;">NJTransportes</span></div>
             <div style="margin-top:48px;">
@@ -99,7 +110,7 @@
     </div>
     <!-- APP SCREEN -->
     <div id="app-screen" class="app-shell hidden">
-      <aside id="sidebar" class="sidebar">
+      <aside id="sidebar" class="sidebar collapsed">
         <div class="sidebar-top">
           <div class="brand">
             <span class="brand-mark">NJ</span>
@@ -121,6 +132,7 @@
               <a class="nav-link" href="index.html"><span>&gt;</span><span class="nav-label">Motoristas</span></a>
               <a class="nav-link" href="index.html#veiculos"><span>&gt;</span><span class="nav-label">Ve&#237;culos</span></a>
               <a class="nav-link" href="index.html#clientes"><span>&gt;</span><span class="nav-label">Clientes</span></a>
+              <a class="nav-link" href="index.html#fornecedores"><span>&gt;</span><span class="nav-label">Fornecedores</span></a>
               <a class="nav-link" href="postos-parceiros.html"><span>&gt;</span><span class="nav-label">Postos Parceiros</span></a>
             </div>
           </div>
@@ -146,13 +158,7 @@
             </div>
           </div>
         </nav>
-        <div class="sidebar-footer">
-          <div class="user-mini" id="user-profile-btn" style="cursor:pointer;transition:background .15s;border-radius:8px;">
-            <span class="avatar" id="avatar">N</span>
-            <span class="nav-label" id="user-name">Usu&#225;rio</span>
-          </div>
-          <button id="logout-button" class="logout"><span>&#8594;</span><span class="nav-label">Sair</span></button>
-        </div>
+        <div class="sidebar-footer"><button id="about-btn" style="background:none; border:none; color:#94a3b8; font-size:12px; font-weight:600; cursor:pointer; text-align:left; padding:0 0 10px 4px; display:block; width:100%; transition: color .2s;" onmouseover="this.style.color='#1261a0'" onmouseout="this.style.color='#94a3b8'">Sobre o Sistema</button><div class="user-mini" id="user-profile-btn" style="cursor:pointer;transition:background .15s;border-radius:8px;"><span class="avatar" id="avatar">N</span><span class="nav-label" id="user-name">Usu&#225;rio</span></div><button id="logout-button" class="logout"><span>&#8594;</span><span class="nav-label">Sair</span></button></div>
       </aside>
       <section class="workspace">
         <header class="topbar">
@@ -193,6 +199,12 @@
                 <div class="kpi-label">Ve&#237;culos Utilizados</div>
                 <div class="kpi-value" id="kpi-veiculos">0</div>
                 <div class="kpi-sub">no per&#237;odo selecionado</div>
+              </div>
+              <div class="kpi-card teal">
+                <span class="kpi-icon">&#128197;</span>
+                <div class="kpi-label">Dias Trabalhados</div>
+                <div class="kpi-value" id="kpi-dias">0</div>
+                <div class="kpi-sub">com viagens no per&#237;odo</div>
               </div>
             </div>
             <div class="dash-filter-bar">
@@ -238,12 +250,15 @@
           </div>
         </div>
       </section>
+
+    <div id="about-modal-backdrop" class="modal-backdrop hidden"><section class="modal" role="dialog" style="max-width:400px;text-align:center;"><div class="modal-header"><div><p class="eyebrow">SISTEMA</p><h2>Sobre</h2></div><button onclick="document.getElementById('about-modal-backdrop').classList.add('hidden')" class="icon-button" aria-label="Fechar">&times;</button></div><div class="modal-body" style="padding:40px 24px;"><h3 style="margin:0;font-size:24px;color:#102a43;font-weight:800;letter-spacing:-0.03em;">NJTransportes</h3><p style="margin:8px 0 0;font-size:16px;color:#64748b;font-weight:600;">Vers&#227;o NJ.2026.V.1.1</p></div><div class="modal-actions" style="justify-content:center;border-top:1px solid #e5e7eb;padding:16px;"><button class="button button-secondary" onclick="document.getElementById('about-modal-backdrop').classList.add('hidden')">Fechar</button></div></section></div>
+
     </div>
     <script>
     var SESSION_KEY = 'nj_session';
-    function getSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY));}catch(e){return null;}}
-    function setSession(u){localStorage.setItem(SESSION_KEY,JSON.stringify(u));}
-    function clearSession(){localStorage.removeItem(SESSION_KEY);}
+    function getSession(){try{return JSON.parse(sessionStorage.getItem(SESSION_KEY));}catch(e){return null;}}
+    function setSession(u){sessionStorage.setItem(SESSION_KEY,JSON.stringify(u));}
+    function clearSession(){sessionStorage.removeItem(SESSION_KEY);}
     (function init(){
       var session=getSession();
       if(!session||!session.id){showAuth();}else{showApp(session);}
@@ -379,10 +394,12 @@
       var totF=data.reduce(function(s,f){return s+num(f.freight);},0);
       var motAtivos=new Set(data.map(function(f){return f.driver_id;}).filter(Boolean)).size;
       var veiUsados=new Set(data.map(function(f){return f.vehicle_id;}).filter(Boolean)).size;
+      var diasTrab=new Set(data.map(function(f){return f.date;}).filter(Boolean)).size;
       document.getElementById('kpi-faturamento').textContent=fmt(totF);
       document.getElementById('kpi-total-fretes').textContent=data.length;
       document.getElementById('kpi-motoristas').textContent=motAtivos;
       document.getElementById('kpi-veiculos').textContent=veiUsados;
+      document.getElementById('kpi-dias').textContent=diasTrab;
       var di=document.getElementById('filter-data-ini').value;
       var df=document.getElementById('filter-data-fim').value;
       document.getElementById('kpi-faturamento-sub').textContent=(di&&df)?'de '+fmtDate(di)+' a '+fmtDate(df):'no per\u00edodo selecionado';
@@ -456,6 +473,19 @@
         }).join('');
       }
     }
-    </script>
+    
+    (function initAboutModal() {
+      var aboutBtn = document.getElementById('about-btn');
+      var aboutModal = document.getElementById('about-modal-backdrop');
+      if (aboutBtn && aboutModal) {
+        aboutBtn.addEventListener('click', function() { aboutModal.classList.remove('hidden'); });
+        aboutModal.addEventListener('click', function(e) { if (e.target === aboutModal) aboutModal.classList.add('hidden'); });
+      }
+    })();
+
+</script>
   </body>
 </html>
+
+
+
