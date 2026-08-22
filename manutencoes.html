@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lançamento de Manutenção</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+body{background:#f6f8fb}
+.topbar{position:sticky;top:0;z-index:1000;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 36px;display:flex;justify-content:flex-start;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.topbar a{display:inline-flex;align-items:center;text-decoration:none;padding:9px 14px;border-radius:7px;font-weight:700;background:#eef2f6;color:#1f2937}
+.sticky-actions{position:sticky;bottom:0;z-index:900;background:#fff;border-top:1px solid #e5e7eb;padding:12px 0;margin-top:8px;display:flex;gap:8px;box-shadow:0 -2px 8px rgba(0,0,0,.05)}
+
+.page{padding:36px}
+.card{max-width:none;padding:28px}
+.form-stack{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.form-stack button{grid-column:1;justify-self:start;padding:9px 14px}
+.actions{display:flex;gap:8px;align-items:center}
+.actions button{border:0;background:transparent;font-weight:700;cursor:pointer;padding:5px 7px}
+.actions .edit{color:var(--blue)}
+.actions .delete{color:#b42318}
+#form-title{margin-bottom:18px}
+#cancel-edit{display:none}
+#msg{min-height:22px}
+@media(max-width:700px){.form-stack{grid-template-columns:1fr}.topbar{padding:10px 16px}.sticky-actions{flex-wrap:wrap}.sticky-actions button{flex:1;min-width:170px}}
+</style>
+<body>
+<nav class="topbar">
+  <a href="dashboard.html">&larr; Voltar para a página inicial</a>
+</nav>
+<main class="page">
+<section class="card">
+<p class="eyebrow">LANÇAMENTOS</p>
+<h2 id="form-title">Nova manutenção</h2>
+<form id="f" class="form-stack">
+<input type="hidden" name="id" id="maintenance-id">
+<label>Data de Entrada<input name="entry_date" type="date" required></label>
+<label>Data de Saída<input name="exit_date" type="date"></label>
+<label>Placa<select name="vehicle_id" id="v" required></select></label>
+<label>Fornecedor<select name="supplier_id" id="s" required></select></label>
+<label>Tipo de Manutenção<input name="maintenance_type" type="text" placeholder="Ex: Troca de óleo, Revisão" required></label>
+<label>Categoria<select name="category" required>
+  <option value="">Selecione</option>
+  <option value="Peças">Peças</option>
+  <option value="Serviços">Serviços</option>
+  <option value="Ambos">Ambos</option>
+</select></label>
+<label>Custo<input name="cost" type="number" step=".01"></label>
+<label>Status<select name="status" required>
+  <option value="Em andamento">Em andamento</option>
+  <option value="Concluído">Concluído</option>
+  <option value="Cancelado">Cancelado</option>
+</select></label>
+<label style="grid-column: 1 / -1;">Descrição/Observações<textarea name="description"></textarea></label>
+<div class="sticky-actions">
+<button id="save-button" class="button button-primary" type="submit">Salvar manutenção</button>
+<button id="cancel-edit" class="button button-secondary" type="button">Cancelar edição</button>
+</div>
+</form>
+<p id="msg" style="font-weight:700"></p>
+<hr>
+<h2>Manutenções cadastradas</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Entrada</th><th>Saída</th><th>Placa</th><th>Fornecedor</th><th>Tipo</th><th>Categoria</th><th>Custo</th><th>Status</th><th>Ações</th></tr></thead>
+<tbody id="list"></tbody>
+</table>
+</div>
+</section>
+</main>
+
+<script>
+const q=s=>document.querySelector(s);
+let entries=[];
+
+function esc(value){
+  return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function l(u,e,k){
+  const response=await fetch('/api/'+u);
+  if(!response.ok) throw new Error('Não foi possível carregar os dados.');
+  const a=await response.json();
+  q(e).innerHTML='<option value="">Selecione</option>'+a.map(x=>'<option value="'+esc(x.id)+'">'+esc(x[k])+'</option>').join('');
+}
+
+function money(value){
+  if(value === null || value === undefined || value === '') return '-';
+  return 'R$ '+Number(value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function fmtDate(v){
+  const s=String(v||'').slice(0,10);
+  if(!s) return '-';
+  const [y,m,d]=s.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function showMessage(text, error=false){
+  q('#msg').textContent=text;
+  q('#msg').style.color=error?'#b42318':'#187444';
+}
+
+async function load(){
+  const response=await fetch('/api/maintenance_entries');
+  if(!response.ok) throw new Error('Não foi possível carregar as manutenções.');
+  entries=await response.json();
+  
+  q('#list').innerHTML=entries.map(x=>`
+    <tr>
+      <td>${fmtDate(x.entry_date)}</td>
+      <td>${fmtDate(x.exit_date)}</td>
+      <td>${esc(x.plate||'-')}</td>
+      <td>${esc(x.supplier_name||'-')}</td>
+      <td>${esc(x.maintenance_type||'-')}</td>
+      <td>${esc(x.category||'-')}</td>
+      <td>${money(x.cost)}</td>
+      <td><span class="badge" style="background:#eef1f4;color:#102a43">${esc(x.status)}</span></td>
+      <td class="actions">
+        <button class="edit" type="button" onclick="editEntry('${esc(x.id)}')">Editar</button>
+        <button class="delete" type="button" onclick="deleteEntry('${esc(x.id)}')">Excluir</button>
+      </td>
+    </tr>`).join('');
+}
+
+function startEdit(item){
+  q('#maintenance-id').value=item.id;
+  q('#f').elements.entry_date.value=(item.entry_date||'').slice(0,10);
+  q('#f').elements.exit_date.value=(item.exit_date||'').slice(0,10);
+  q('#v').value=item.vehicle_id||'';
+  q('#s').value=item.supplier_id||'';
+  q('#f').elements.maintenance_type.value=item.maintenance_type||'';
+  q('#f').elements.category.value=item.category||'';
+  q('#f').elements.cost.value=item.cost??'';
+  q('#f').elements.status.value=item.status||'Em andamento';
+  q('#f').elements.description.value=item.description||'';
+  q('#form-title').textContent='Editar manutenção';
+  q('#save-button').textContent='Salvar alterações';
+  q('#cancel-edit').style.display='inline-block';
+  showMessage('Editando a manutenção selecionada.');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+window.editEntry=function(id){
+  const item=entries.find(x=>String(x.id)===String(id));
+  if(item) startEdit(item);
+};
+
+function cancelEdit(){
+  q('#f').reset();
+  q('#maintenance-id').value='';
+  q('#form-title').textContent='Nova manutenção';
+  q('#save-button').textContent='Salvar manutenção';
+  q('#cancel-edit').style.display='none';
+}
+
+window.deleteEntry=async function(id){
+  const item=entries.find(x=>String(x.id)===String(id));
+  if(!item) return;
+  const descricao=`${item.maintenance_type||''} - ${item.plate||'sem placa'} - ${item.supplier_name||'sem fornecedor'}`;
+  if(!confirm('Tem certeza que deseja excluir esta manutenção?\\n\\n'+descricao)) return;
+  try{
+    const s = JSON.parse(sessionStorage.getItem('nj_session')||'null');
+    const response=await fetch('/api/maintenance_entries/'+encodeURIComponent(id),{method:'DELETE', headers: s ? {'X-User-Id':s.id, 'X-User-Name':encodeURIComponent(s.name)} : {}});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error||'Não foi possível excluir.');
+    if(String(q('#maintenance-id').value)===String(id)) cancelEdit();
+    showMessage('Manutenção excluída com sucesso.');
+    await load();
+  }catch(error){
+    showMessage(error.message,true);
+  }
+};
+
+q('#cancel-edit').onclick=cancelEdit;
+
+q('#f').onsubmit=async e=>{
+  e.preventDefault();
+  const id=q('#maintenance-id').value;
+  const data=Object.fromEntries(new FormData(e.target));
+  delete data.id;
+  try{
+    const s = JSON.parse(sessionStorage.getItem('nj_session')||'null');
+    const response=await fetch('/api/maintenance_entries'+(id?'/'+encodeURIComponent(id):''),{
+      method:id?'PUT':'POST',
+      headers:{'Content-Type':'application/json', ...(s ? {'X-User-Id':s.id, 'X-User-Name':encodeURIComponent(s.name)} : {})},
+      body:JSON.stringify(data)
+    });
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(result.error||'Não foi possível salvar a manutenção.');
+    cancelEdit();
+    showMessage(id?'Manutenção atualizada com sucesso!':'Manutenção salva com sucesso!');
+    await load();
+  }catch(error){
+    showMessage(error.message,true);
+  }
+};
+
+Promise.all([
+  l('vehicles','#v','plate'),
+  l('suppliers','#s','name'),
+  load()
+]).catch(error=>showMessage(error.message,true));
+</script>
+<script src="timeout.js"></script></body>
+</html>
