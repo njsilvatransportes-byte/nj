@@ -112,7 +112,8 @@ async function handleUserPhotoFileSelected(file) {
     }
 
     updateUserAvatar();
-  };
+
+  };
   reader.readAsDataURL(file);
 }
 
