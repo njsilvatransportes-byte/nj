@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Relatório Consolidado</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+body{background:#f6f8fb}
+.report{padding:36px;max-width:1500px;margin:0 auto}
+.filters{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;background:#fff;padding:20px;border:1px solid #e5e7eb;border-radius:10px;margin:20px 0}
+.table-wrap{background:#fff;border:1px solid #e5e7eb;border-radius:10px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:14px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:13px}
+@page{size:A4 landscape;margin:12mm}
+@media print{
+  body{background:#fff}
+  body>*{visibility:hidden}
+  .report,.report *{visibility:visible}
+  .report{position:absolute;left:0;top:0;width:100%;max-width:none;padding:0}
+  .filters,.eyebrow,.back-link{display:none!important}
+  .stats-cards{display:none!important}
+  .table-wrap{border:0}
+  th,td{font-size:10px;padding:7px}
+}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:20px 0}
+.stat{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:20px}
+.stat span{color:#64748b;font-size:13px;display:block}
+.stat strong{display:block;font-size:22px;font-weight:800;color:#102a43;margin-top:6px}
+.stat.green strong{color:#187444}
+.stat-orange strong{color:#a15d00}
+.stat.red strong{color:#b42318}
+.stat-blue strong{color:#1261a0}
+@media(max-width:800px){.stats{grid-template-columns:1fr 1fr}}
+.tooltip-custom { position: relative; }
+.tooltip-custom .tooltiptext {
+  visibility: hidden;
+  width: 250px;
+  background-color: #102a43;
+  color: #fff;
+  text-align: left;
+  border-radius: 6px;
+  padding: 15px;
+  position: absolute;
+  z-index: 1;
+  top: 100%;
+  left: 50%;
+  margin-left: -125px;
+  margin-top: 10px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.tooltip-custom .tooltiptext::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent #102a43 transparent;
+}
+.tooltip-custom:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
+.calc-row {
+  display: flex;
+  justify-content: space-between;
+}
+.calc-row.total {
+  border-top: 1px solid rgba(255,255,255,0.2);
+  margin-top: 8px;
+  padding-top: 8px;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+<main class="report">
+<a href="index.html" class="button button-secondary back-link" style="display:inline-block; margin-bottom:24px; text-decoration:none; font-weight:500; font-size:14px; padding:10px 16px;">&larr; Voltar para a página inicial</a>
+<p class="eyebrow">RELATÓRIOS</p>
+<h1>Relatório consolidado</h1>
+<section class="filters">
+<label>Placa<select id="plate"><option value="">Todas</option></select></label>
+<label>De<input id="start" type="date"></label>
+<label>Até<input id="end" type="date"></label>
+<div style="display: flex; gap: 10px; align-items: flex-end;">
+<button class="button button-secondary" style="flex:1" id="clear">Limpar</button>
+<button class="button button-primary" style="flex:1" onclick="window.print()">Imprimir / PDF</button>
+</div>
+</section>
+
+<section class="stats" style="grid-template-columns: repeat(3, 1fr);">
+  <article class="stat stat-blue"><span>Total Faturamento (Fretes)</span><strong id="s-fretes">R$ 0,00</strong></article>
+  <article class="stat-orange"><span>Total Abastecimentos</span><strong id="s-abastecimentos">R$ 0,00</strong></article>
+  <article class="stat red"><span>Total Manutenções</span><strong id="s-manutencoes">R$ 0,00</strong></article>
+  
+  <article class="stat stat-orange"><span>Total Comissão (15%)</span><strong id="s-comissao">R$ 0,00</strong></article>
+  <article class="stat red tooltip-custom">
+    <span>Impostos e Taxas</span>
+    <strong id="s-impostos">R$ 0,00</strong>
+    <div class="tooltiptext">
+      <div class="calc-row"><span>Pedágios</span><span id="tt-pedagios">- R$ 0,00</span></div>
+      <div class="calc-row"><span>SEST/SENAT</span><span id="tt-sest">- R$ 0,00</span></div>
+      <div class="calc-row"><span>IRRF</span><span id="tt-irrf">- R$ 0,00</span></div>
+      <div class="calc-row"><span>INSS</span><span id="tt-inss">- R$ 0,00</span></div>
+    </div>
+  </article>
+  <article class="stat green"><span>Resultado Líquido</span><strong id="s-resultado">R$ 0,00</strong></article>
+</section>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Placa</th>
+<th>Faturamento (Fretes)</th>
+<th>Abastecimentos</th>
+<th>Manutenções</th>
+<th>Comissão (15%)</th>
+<th>Impostos e Taxas</th>
+<th>Resultado Líquido</th>
+</tr>
+</thead>
+<tbody id="rows">
+</tbody>
+</table>
+</div>
+</main>
+<script>
+const q=s=>document.querySelector(s);
+let freights=[], fuelings=[], maintenances=[], vehiclesMap=new Map();
+const m=v=>'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+function render(){
+  let p=q('#plate').value,
+      a=q('#start').value,
+      b=q('#end').value;
+
+  // Filtrar dados
+  let f_freights = freights.filter(r => (!p||r.vehicle_id===p) && (!a||r.date>=a) && (!b||r.date<=b));
+  let f_fuelings = fuelings.filter(r => (!p||r.vehicle_id===p) && (!a||r.date>=a) && (!b||r.date<=b));
+  let f_maints = maintenances.filter(r => (!p||r.vehicle_id===p) && (!a||r.entry_date>=a) && (!b||r.entry_date<=b));
+
+  // Totais globais
+  let tFretes = f_freights.reduce((s,r)=>s+Number(r.freight||0),0);
+  let tAbast = f_fuelings.reduce((s,r)=>s+(Number(r.price_per_liter||0)*Number(r.quantity_liters||0)),0);
+  let tManut = f_maints.reduce((s,r)=>s+Number(r.cost||0),0);
+  
+  let tComissao = tFretes * 0.15;
+  let tPedagios = f_freights.reduce((s,r)=>s+Number(r.tolls||0),0);
+  let tSest = f_freights.reduce((s,r)=>s+Number(r.sest_senat||0),0);
+  let tIrrf = f_freights.reduce((s,r)=>s+Number(r.irrf||0),0);
+  let tInss = f_freights.reduce((s,r)=>s+Number(r.inss||0),0);
+
+  let tImpostos = tPedagios + tSest + tIrrf + tInss;
+  let tResultado = tFretes - tAbast - tManut - tComissao - tImpostos;
+
+  q('#s-fretes').textContent = m(tFretes);
+  q('#s-abastecimentos').textContent = m(tAbast);
+  q('#s-manutencoes').textContent = m(tManut);
+  q('#s-comissao').textContent = m(tComissao);
+  q('#s-impostos').textContent = m(tImpostos);
+  
+  q('#tt-pedagios').textContent = '- ' + m(tPedagios);
+  q('#tt-sest').textContent = '- ' + m(tSest);
+  q('#tt-irrf').textContent = '- ' + m(tIrrf);
+  q('#tt-inss').textContent = '- ' + m(tInss);
+  
+  const resEl = q('#s-resultado');
+  resEl.textContent = m(tResultado);
+  resEl.style.color = tResultado < 0 ? '#b42318' : '#187444';
+
+  // Agrupar por veículo
+  let statsByVehicle = {};
+  
+  f_freights.forEach(r => {
+    let vid = r.vehicle_id;
+    if(!statsByVehicle[vid]) statsByVehicle[vid] = {plate: r.plate||vehiclesMap.get(vid)||'-', frete:0, abast:0, manut:0, comissao:0, impostos:0};
+    statsByVehicle[vid].frete += Number(r.freight||0);
+    statsByVehicle[vid].comissao += (Number(r.freight||0)*0.15);
+    statsByVehicle[vid].impostos += Number(r.tolls||0) + Number(r.sest_senat||0) + Number(r.irrf||0) + Number(r.inss||0);
+  });
+  
+  f_fuelings.forEach(r => {
+    let vid = r.vehicle_id;
+    if(!statsByVehicle[vid]) statsByVehicle[vid] = {plate: r.plate||vehiclesMap.get(vid)||'-', frete:0, abast:0, manut:0, comissao:0, impostos:0};
+    statsByVehicle[vid].abast += (Number(r.price_per_liter||0)*Number(r.quantity_liters||0));
+  });
+
+  f_maints.forEach(r => {
+    let vid = r.vehicle_id;
+    if(!statsByVehicle[vid]) statsByVehicle[vid] = {plate: r.plate||vehiclesMap.get(vid)||'-', frete:0, abast:0, manut:0, comissao:0, impostos:0};
+    statsByVehicle[vid].manut += Number(r.cost||0);
+  });
+
+  let html = '';
+  Object.values(statsByVehicle).forEach(v => {
+    let res = v.frete - v.abast - v.manut - v.comissao - v.impostos;
+    let color = res < 0 ? 'color:#b42318;font-weight:bold;' : 'color:#187444;font-weight:bold;';
+    html += `<tr>
+      <td><strong>${v.plate}</strong></td>
+      <td>${m(v.frete)}</td>
+      <td>${m(v.abast)}</td>
+      <td>${m(v.manut)}</td>
+      <td>${m(v.comissao)}</td>
+      <td>${m(v.impostos)}</td>
+      <td style="${color}">${m(res)}</td>
+    </tr>`;
+  });
+  
+  if (Object.keys(statsByVehicle).length === 0) {
+    html = `<tr><td colspan="5" style="text-align:center;color:#64748b;padding:30px;">Nenhum dado encontrado para o período/filtros selecionados.</td></tr>`;
+  }
+
+  q('#rows').innerHTML = html;
+}
+
+Promise.all([
+  fetch('/api/freight_entries').then(r=>r.json()),
+  fetch('/api/fuelings').then(r=>r.json()),
+  fetch('/api/maintenance_entries').then(r=>r.json())
+]).then(([f1, f2, f3]) => {
+  freights = f1;
+  fuelings = f2;
+  maintenances = f3;
+  
+  // Extrair placas únicas para o filtro
+  let allVehicles = [...f1, ...f2, ...f3];
+  for(let x of allVehicles) {
+    if(x.vehicle_id && x.plate) vehiclesMap.set(x.vehicle_id, x.plate);
+  }
+  
+  for(let [id, plate] of vehiclesMap.entries()) {
+    q('#plate').innerHTML += `<option value="${id}">${plate}</option>`;
+  }
+  
+  render();
+});
+
+document.querySelectorAll('input,select').forEach(e=>e.oninput=render);
+q('#clear').onclick=()=>{
+  document.querySelectorAll('.filters input,.filters select').forEach(x=>x.value='');
+  render()
+}
+</script>
+<script src="timeout.js"></script>
+</body>
+</html>

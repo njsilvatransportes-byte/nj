@@ -94,19 +94,13 @@ th,td{padding:14px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:13p
 </section>
 
 <section class="stats">
-  <article class="stat green tooltip-custom">
-    <span>Total Líquido</span>
-    <strong id="s-liquido">R$ 0,00</strong>
-    <div class="tooltiptext" id="s-liquido-tooltip">
-      <div class="calc-row"><span>Total do Frete</span><span id="tt-frete">R$ 0,00</span></div>
-      <div class="calc-row"><span>Comissão (15%)</span><span id="tt-comissao">- R$ 0,00</span></div>
-      <div class="calc-row"><span>Abastecimento</span><span id="tt-abast">- R$ 0,00</span></div>
-      <div class="calc-row"><span>Pedágios</span><span id="tt-pedagios">- R$ 0,00</span></div>
-      <div class="calc-row"><span>SEST/SENAT</span><span id="tt-sest">- R$ 0,00</span></div>
-      <div class="calc-row"><span>IRRF</span><span id="tt-irrf">- R$ 0,00</span></div>
-      <div class="calc-row"><span>INSS</span><span id="tt-inss">- R$ 0,00</span></div>
-      <div class="calc-row total"><span>Total</span><span id="tt-total">R$ 0,00</span></div>
-    </div>
+  <article class="stat green">
+    <span>Total Bruto</span>
+    <strong id="s-bruto">R$ 0,00</strong>
+  </article>
+  <article class="stat stat-orange" style="margin-left: 16px;">
+    <span>Total Comissão (15%)</span>
+    <strong id="s-comissao-card">R$ 0,00</strong>
   </article>
 </section>
 
@@ -163,16 +157,8 @@ function render(){
   
   let totalLiquido = sf - comissao - abastecimento - st - ss - si - sn;
 
-  q('#s-liquido').textContent=m(totalLiquido);
-  
-  q('#tt-frete').textContent = m(sf);
-  q('#tt-comissao').textContent = '- ' + m(comissao);
-  q('#tt-abast').textContent = '- ' + m(abastecimento);
-  q('#tt-pedagios').textContent = '- ' + m(st);
-  q('#tt-sest').textContent = '- ' + m(ss);
-  q('#tt-irrf').textContent = '- ' + m(si);
-  q('#tt-inss').textContent = '- ' + m(sn);
-  q('#tt-total').textContent = m(totalLiquido);
+  q('#s-bruto').textContent=m(sf);
+  q('#s-comissao-card').textContent=m(comissao);
 
   q('#rows').innerHTML=list.map(r=>'<tr><td>'+fmtDate(r.date)+'</td><td>'+r.driver_name+'</td><td>'+r.plate+'</td><td>'+r.client_name+'</td><td>'+r.destination+'</td><td>'+m(r.freight)+'</td><td>'+m(r.freight*.15)+'</td><td>'+m(r.tolls)+'</td><td>'+m(r.sest_senat)+'</td><td>'+m(r.irrf)+'</td><td>'+m(r.inss)+'</td></tr>').join('')
 }
