@@ -376,7 +376,27 @@ $('#sidebar-toggle').addEventListener('click', () => $('#sidebar').classList.tog
   });
 })();
 
-fetch('/api/drivers').then(function(r){var e=document.querySelector('#db-status');if(e)e.innerHTML=r.ok?'<span style="color:#22c55e">&#9679;</span> Banco conectado':'<span style="color:#ef4444">&#9679;</span> Banco desconectado'}).catch(function(){var e=document.querySelector('#db-status');if(e)e.innerHTML='<span style="color:#ef4444">&#9679;</span> Banco desconectado'});
+fetch('/api/db-status').then(function(r){return r.json();}).then(function(data){
+  var e=document.querySelector('#db-status');
+  if(!e) return;
+  if(data.connected){
+    var lastUpTxt='';
+    if(data.last_update){
+      var d=new Date(data.last_update);
+      lastUpTxt='\nÚlt. mov.: '+d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    }
+    e.innerHTML='<span style="color:#22c55e">&#9679;</span> Banco conectado';
+    e.setAttribute('title','Banco de dados conectado'+lastUpTxt);
+    e.style.cursor='help';
+  } else {
+    e.innerHTML='<span style="color:#ef4444">&#9679;</span> Banco desconectado';
+    e.removeAttribute('title');
+    e.style.cursor='default';
+  }
+}).catch(function(){
+  var e=document.querySelector('#db-status');
+  if(e){e.innerHTML='<span style="color:#ef4444">&#9679;</span> Banco desconectado';e.removeAttribute('title');e.style.cursor='default';}
+});
 
 (function initAboutModal() {
   const aboutBtn = document.getElementById('about-btn');

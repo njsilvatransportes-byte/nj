@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Relatório de Comissões</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+body{background:#f6f8fb}
+.report{padding:36px;max-width:1500px;margin:0 auto}
+.filters{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;background:#fff;padding:20px;border:1px solid #e5e7eb;border-radius:10px;margin:20px 0}
+.table-wrap{background:#fff;border:1px solid #e5e7eb;border-radius:10px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:14px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:13px}
+@page{size:A4 landscape;margin:12mm}
+@media print{
+  body{background:#fff}
+  body>*{visibility:hidden}
+  .report,.report *{visibility:visible}
+  .report{position:absolute;left:0;top:0;width:100%;max-width:none;padding:0}
+  .filters,.eyebrow,.back-link{display:none!important}
+  .stats-cards{display:none!important}
+  .table-wrap{border:0}
+  th,td{font-size:10px;padding:7px}
+}
+.stats{display:flex;justify-content:flex-start;margin:20px 0}
+.stat{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:20px;min-width:300px;text-align:center;cursor:help}
+.stat span{color:#64748b;font-size:14px;display:block;margin-bottom:8px}
+.stat strong{display:block;font-size:32px;font-weight:800;color:#102a43}
+.stat.green strong{color:#187444}
+.stat-orange strong{color:#a15d00}
+.stat.red strong{color:#b42318}
+.tooltip-custom {
+  position: relative;
+}
+.tooltip-custom .tooltiptext {
+  visibility: hidden;
+  width: 250px;
+  background-color: #102a43;
+  color: #fff;
+  text-align: left;
+  border-radius: 6px;
+  padding: 15px;
+  position: absolute;
+  z-index: 1;
+  top: 100%;
+  left: 50%;
+  margin-left: -125px;
+  margin-top: 10px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.tooltip-custom .tooltiptext::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent #102a43 transparent;
+}
+.tooltip-custom:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
+.calc-row {
+  display: flex;
+  justify-content: space-between;
+}
+.calc-row.total {
+  border-top: 1px solid rgba(255,255,255,0.2);
+  margin-top: 8px;
+  padding-top: 8px;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+<main class="report">
+<a href="index.html" class="button button-secondary back-link" style="display:inline-block; margin-bottom:24px; text-decoration:none; font-weight:500; font-size:14px; padding:10px 16px;">&larr; Voltar para a página inicial</a>
+<p class="eyebrow">RELATÓRIOS</p>
+<h1>Relatório de comissões</h1>
+<section class="filters">
+<label>Motorista<select id="driver"><option value="">Todos</option></select></label>
+<label>Cliente<select id="client"><option value="">Todos</option></select></label>
+<label>Destino<input id="destination"></label>
+<label>De<input id="start" type="date"></label>
+<label>Até<input id="end" type="date"></label>
+<button class="button button-secondary" id="clear">Limpar</button>
+<button class="button button-primary" onclick="window.print()">Imprimir / PDF</button>
+</section>
+
+<section class="stats">
+  <article class="stat green tooltip-custom">
+    <span>Total Líquido</span>
+    <strong id="s-liquido">R$ 0,00</strong>
+    <div class="tooltiptext" id="s-liquido-tooltip">
+      <div class="calc-row"><span>Total do Frete</span><span id="tt-frete">R$ 0,00</span></div>
+      <div class="calc-row"><span>Comissão (15%)</span><span id="tt-comissao">- R$ 0,00</span></div>
+      <div class="calc-row"><span>Abastecimento</span><span id="tt-abast">- R$ 0,00</span></div>
+      <div class="calc-row"><span>Pedágios</span><span id="tt-pedagios">- R$ 0,00</span></div>
+      <div class="calc-row"><span>SEST/SENAT</span><span id="tt-sest">- R$ 0,00</span></div>
+      <div class="calc-row"><span>IRRF</span><span id="tt-irrf">- R$ 0,00</span></div>
+      <div class="calc-row"><span>INSS</span><span id="tt-inss">- R$ 0,00</span></div>
+      <div class="calc-row total"><span>Total</span><span id="tt-total">R$ 0,00</span></div>
+    </div>
+  </article>
+</section>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Motorista</th>
+<th>Placa</th>
+<th>Cliente</th>
+<th>Destino</th>
+<th>Frete</th>
+<th>Comissão</th>
+<th>Pedágios</th>
+<th>SEST/SENAT</th>
+<th>IRRF</th>
+<th>INSS</th>
+</tr>
+</thead>
+<tbody id="rows">
+</tbody>
+</table>
+</div>
+</main>
+<script>
+const q=s=>document.querySelector(s);
+let all=[], allFuelings=[];
+const m=v=>'R$ '+Number(v||0).toFixed(2);
+function fmtDate(v){
+  const s=String(v||'').slice(0,10);
+  if(!s)return'-';
+  const[y,mo,d]=s.split('-');
+  return`${d}/${mo}/${y}`;
+}
+function render(){
+  let d=q('#driver').value,
+      c=q('#client').value,
+      x=q('#destination').value.toLowerCase(),
+      a=q('#start').value,
+      b=q('#end').value,
+      list=all.filter(r=>(!d||r.driver_id===d)&&(!c||r.client_id===c)&&(!x||r.destination.toLowerCase().includes(x))&&(!a||r.date>=a)&&(!b||r.date<=b));
+  
+  let fuelList = allFuelings.filter(f => (!d||f.driver_id===d)&&(!a||f.date>=a)&&(!b||f.date<=b));
+
+  let sf=list.reduce((s,r)=>s+Number(r.freight||0),0),
+      st=list.reduce((s,r)=>s+Number(r.tolls||0),0),
+      ss=list.reduce((s,r)=>s+Number(r.sest_senat||0),0),
+      si=list.reduce((s,r)=>s+Number(r.irrf||0),0),
+      sn=list.reduce((s,r)=>s+Number(r.inss||0),0);
+      
+  let comissao = sf * 0.15;
+  let abastecimento = fuelList.reduce((s,f) => s + (Number(f.price_per_liter||0) * Number(f.quantity_liters||0)), 0);
+  
+  let totalLiquido = sf - comissao - abastecimento - st - ss - si - sn;
+
+  q('#s-liquido').textContent=m(totalLiquido);
+  
+  q('#tt-frete').textContent = m(sf);
+  q('#tt-comissao').textContent = '- ' + m(comissao);
+  q('#tt-abast').textContent = '- ' + m(abastecimento);
+  q('#tt-pedagios').textContent = '- ' + m(st);
+  q('#tt-sest').textContent = '- ' + m(ss);
+  q('#tt-irrf').textContent = '- ' + m(si);
+  q('#tt-inss').textContent = '- ' + m(sn);
+  q('#tt-total').textContent = m(totalLiquido);
+
+  q('#rows').innerHTML=list.map(r=>'<tr><td>'+fmtDate(r.date)+'</td><td>'+r.driver_name+'</td><td>'+r.plate+'</td><td>'+r.client_name+'</td><td>'+r.destination+'</td><td>'+m(r.freight)+'</td><td>'+m(r.freight*.15)+'</td><td>'+m(r.tolls)+'</td><td>'+m(r.sest_senat)+'</td><td>'+m(r.irrf)+'</td><td>'+m(r.inss)+'</td></tr>').join('')
+}
+
+Promise.all([
+  fetch('/api/freight_entries').then(r=>r.json()),
+  fetch('/api/fuelings').then(r=>r.json())
+]).then(([freights, fuelings]) => {
+  all = freights;
+  allFuelings = fuelings;
+  for(let [id,n] of new Map(freights.map(x=>[x.driver_id,x.driver_name]))) if(n) q('#driver').innerHTML+='<option value="'+id+'">'+n+'</option>';
+  for(let [id,n] of new Map(freights.map(x=>[x.client_id,x.client_name]))) if(n) q('#client').innerHTML+='<option value="'+id+'">'+n+'</option>';
+  render();
+});
+document.querySelectorAll('input,select').forEach(e=>e.oninput=render);
+q('#clear').onclick=()=>{
+  document.querySelectorAll('.filters input,.filters select').forEach(x=>x.value='');
+  render()
+}
+</script>
+<script src="timeout.js"></script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Relatório de Manutenções</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+body{background:#f6f8fb}
+.report{padding:36px;max-width:1500px;margin:0 auto}
+.filters{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;background:#fff;padding:20px;border:1px solid #e5e7eb;border-radius:10px;margin:20px 0}
+.table-wrap{background:#fff;border:1px solid #e5e7eb;border-radius:10px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:14px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:13px}
+@page{size:A4 landscape;margin:12mm}
+@media print{
+  body{background:#fff}
+  body>*{visibility:hidden}
+  .report,.report *{visibility:visible}
+  .report{position:absolute;left:0;top:0;width:100%;max-width:none;padding:0}
+  .filters,.eyebrow,.back-link{display:none!important}
+  .stats-cards{display:none!important}
+  .table-wrap{border:0}
+  th,td{font-size:10px;padding:7px}
+}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:20px 0}
+.stat{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:20px}
+.stat span{color:#64748b;font-size:13px;display:block}
+.stat strong{display:block;font-size:22px;font-weight:800;color:#102a43;margin-top:6px}
+.stat.green strong{color:#187444}
+.stat-orange strong{color:#a15d00}
+.stat.red strong{color:#b42318}
+@media(max-width:800px){.stats{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main class="report">
+<a href="index.html" class="button button-secondary back-link" style="display:inline-block; margin-bottom:24px; text-decoration:none; font-weight:500; font-size:14px; padding:10px 16px;">&larr; Voltar para a página inicial</a>
+<p class="eyebrow">RELATÓRIOS</p>
+<h1>Relatório de manutenções</h1>
+<section class="filters">
+<label>Placa<select id="plate"><option value="">Todas</option></select></label>
+<label>Fornecedor<select id="supplier"><option value="">Todos</option></select></label>
+<label>Status<select id="status"><option value="">Todos</option></select></label>
+<label>De<input id="start" type="date"></label>
+<label>Até<input id="end" type="date"></label>
+<div style="display: flex; gap: 10px; align-items: flex-end;">
+<button class="button button-secondary" style="flex:1" id="clear">Limpar</button>
+<button class="button button-primary" style="flex:1" onclick="window.print()">Imprimir / PDF</button>
+</div>
+</section>
+
+<section class="stats">
+  <article class="stat"><span>Total Manutenções</span><strong id="s-total">0</strong></article>
+  <article class="stat green"><span>Custo Total</span><strong id="s-cost">R$ 0,00</strong></article>
+  <article class="stat-orange"><span>Em andamento</span><strong id="s-pending">0</strong></article>
+  <article class="stat green"><span>Concluídas</span><strong id="s-completed">0</strong></article>
+</section>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Data Entrada</th>
+<th>Data Saída</th>
+<th>Placa</th>
+<th>Fornecedor</th>
+<th>Tipo</th>
+<th>Categoria</th>
+<th>Custo</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="rows">
+</tbody>
+</table>
+</div>
+</main>
+<script>
+const q=s=>document.querySelector(s);
+let all=[];
+const m=v=>'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+function fmtDate(v){
+  const s=String(v||'').slice(0,10);
+  if(!s)return'-';
+  const[y,mo,d]=s.split('-');
+  return`${d}/${mo}/${y}`;
+}
+function render(){
+  let p=q('#plate').value,
+      s=q('#supplier').value,
+      status=q('#status').value,
+      a=q('#start').value,
+      b=q('#end').value,
+      list=all.filter(r=>(!p||r.vehicle_id===p)&&(!s||r.supplier_id===s)&&(!status||r.status===status)&&(!a||r.entry_date>=a)&&(!b||r.entry_date<=b));
+
+  let costTotal=list.reduce((sum,r)=>sum+Number(r.cost||0),0);
+  let inProgress=list.filter(x=>x.status==='Em andamento').length;
+  let completed=list.filter(x=>x.status==='Concluída').length;
+
+  q('#s-total').textContent=list.length;
+  q('#s-cost').textContent=m(costTotal);
+  q('#s-pending').textContent=inProgress;
+  q('#s-completed').textContent=completed;
+
+  q('#rows').innerHTML=list.map(r=>`<tr><td>${fmtDate(r.entry_date)}</td><td>${fmtDate(r.exit_date)}</td><td>${r.plate||'-'}</td><td>${r.supplier_name||'-'}</td><td>${r.maintenance_type||'-'}</td><td>${r.category||'-'}</td><td>${m(r.cost)}</td><td>${r.status||'-'}</td></tr>`).join('')
+}
+
+fetch('/api/maintenance_entries').then(r=>r.json()).then(a=>{
+  all=a;
+  for(let [id,n] of new Map(a.map(x=>[x.vehicle_id,x.plate]))) if(n) q('#plate').innerHTML+='<option value="'+id+'">'+n+'</option>';
+  for(let [id,n] of new Map(a.map(x=>[x.supplier_id,x.supplier_name]))) if(n) q('#supplier').innerHTML+='<option value="'+id+'">'+n+'</option>';
+  for(let st of [...new Set(a.map(x=>x.status).filter(Boolean))]) q('#status').innerHTML+='<option value="'+st+'">'+st+'</option>';
+  render();
+});
+document.querySelectorAll('input,select').forEach(e=>e.oninput=render);
+q('#clear').onclick=()=>{
+  document.querySelectorAll('.filters input,.filters select').forEach(x=>x.value='');
+  render()
+}
+</script>
+<script src="timeout.js"></script>
+</body>
+</html>

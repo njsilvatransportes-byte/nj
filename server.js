@@ -75,6 +75,27 @@ async function api(request, response, url) {
   if (route.match(/^\/api\/users\/[\w-]+\/role$/) && method === 'PUT') { const id = route.split('/')[3]; const body = await readBody(request); if (!['Administrador', 'Supervisor', 'Operador'].includes(body.role)) return json(response, 400, { error: 'Nível de acesso inválido.' }); await pool.query('UPDATE users SET role=$1 WHERE id=$2', [body.role, id]); await logAudit(performedById, performedByName, 'UPDATE', 'users', id, { action: 'change_role', role: body.role }); return json(response, 200, { id, role: body.role }); }
   if (route.match(/^\/api\/users\/[\w-]+\/approve-password$/) && method === 'PUT') { const id = route.split('/')[3]; await pool.query('UPDATE users SET password_hash = pending_password_hash, pending_password_hash = NULL WHERE id=$1', [id]); await logAudit(performedById, performedByName, 'UPDATE', 'users', id, { action: 'approve_password' }); return json(response, 200, { id, password_approved: true }); }
   if (route.match(/^\/api\/users\/[\w-]+\/reject-password$/) && method === 'PUT') { const id = route.split('/')[3]; await pool.query('UPDATE users SET pending_password_hash = NULL WHERE id=$1', [id]); await logAudit(performedById, performedByName, 'UPDATE', 'users', id, { action: 'reject_password' }); return json(response, 200, { id, password_rejected: true }); }
+  if (route === '/api/db-status' && method === 'GET') {
+    try {
+      const result = await pool.query(`
+        SELECT MAX(last_update) AS last_update FROM (
+          SELECT MAX(created_at) AS last_update FROM users
+          UNION ALL SELECT MAX(created_at) FROM drivers
+          UNION ALL SELECT MAX(created_at) FROM vehicles
+          UNION ALL SELECT MAX(created_at) FROM clients
+          UNION ALL SELECT MAX(created_at) FROM suppliers
+          UNION ALL SELECT MAX(created_at) FROM freight_entries
+          UNION ALL SELECT MAX(created_at) FROM partner_stations
+          UNION ALL SELECT MAX(created_at) FROM fuelings
+          UNION ALL SELECT MAX(created_at) FROM maintenance_entries
+          UNION ALL SELECT MAX(created_at) FROM audit_log
+        ) t
+      `);
+      return json(response, 200, { connected: true, last_update: result.rows[0].last_update || null });
+    } catch (e) {
+      return json(response, 500, { connected: false, last_update: null });
+    }
+  }
   const resource = route.match(/^\/api\/(drivers|vehicles|clients|suppliers|freight_entries|partner_stations|fuelings|maintenance_entries)(?:\/([\w-]+))?$/); if (!resource) return false;
   // Dedicated photo endpoint: PUT /api/drivers/:id/photo
   if (route.match(/^\/api\/drivers\/[\w-]+\/photo$/) && method === 'PUT') {
