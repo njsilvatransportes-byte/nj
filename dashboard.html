@@ -241,6 +241,16 @@
                 <div class="chart-container"><canvas id="chart-composicao"></canvas></div>
               </div>
               <div class="dash-chart-card">
+                <p class="dash-chart-title">&#9981; Abastecimentos por Ve&#237;culo</p>
+                <p class="dash-chart-subtitle">Custo total de combust&#237;vel</p>
+                <div class="chart-container"><canvas id="chart-abastecimentos"></canvas></div>
+              </div>
+              <div class="dash-chart-card">
+                <p class="dash-chart-title">&#128736; Manuten&#231;&#245;es por Ve&#237;culo</p>
+                <p class="dash-chart-subtitle">Custo total com manuten&#231;&#245;es</p>
+                <div class="chart-container"><canvas id="chart-manutencoes"></canvas></div>
+              </div>
+              <div class="dash-chart-card">
                 <p class="dash-chart-title">&#127942; Ranking de Motoristas</p>
                 <p class="dash-chart-subtitle">Ordenado por valor total de fretes</p>
                 <div style="max-height:280px;overflow-y:auto;">
@@ -282,11 +292,11 @@
         else{avatarEl.textContent=(session.name||'U')[0].toUpperCase();}
       }
       var now=new Date();
-      var y=now.getFullYear();
-      var m=String(now.getMonth()+1).padStart(2,'0');
-      var lastDay=new Date(y,now.getMonth()+1,0).getDate();
-      document.getElementById('filter-data-ini').value=y+'-'+m+'-01';
-      document.getElementById('filter-data-fim').value=y+'-'+m+'-'+String(lastDay).padStart(2,'0');
+      var endD=new Date(now);
+      var startD=new Date(now);
+      startD.setDate(startD.getDate()-30);
+      document.getElementById('filter-data-ini').value=startD.toISOString().substring(0,10);
+      document.getElementById('filter-data-fim').value=endD.toISOString().substring(0,10);
       loadDashboard();
       checkDbStatus();
     }
@@ -348,15 +358,17 @@
         }
       });
     });
-    var chartMensal=null,chartMotorista=null,chartVeiculo=null,chartComposicao=null;
-    var allFretes=[],allDrivers=[],allVehicles=[];
+    var chartMensal=null,chartMotorista=null,chartVeiculo=null,chartComposicao=null,chartAbastecimentos=null,chartManutencoes=null;
+    var allFretes=[],allDrivers=[],allVehicles=[],allFuelings=[],allMaintenances=[];
     async function loadDashboard(){
       showLoading(true);
       try{
-        var responses=await Promise.all([fetch('/api/freight_entries'),fetch('/api/drivers'),fetch('/api/vehicles')]);
+        var responses=await Promise.all([fetch('/api/freight_entries'),fetch('/api/drivers'),fetch('/api/vehicles'),fetch('/api/fuelings'),fetch('/api/maintenance_entries')]);
         allFretes=responses[0].ok?await responses[0].json():[];
         allDrivers=responses[1].ok?await responses[1].json():[];
         allVehicles=responses[2].ok?await responses[2].json():[];
+        allFuelings=responses[3].ok?await responses[3].json():[];
+        allMaintenances=responses[4].ok?await responses[4].json():[];
         populateFilters();applyFilters();
         document.getElementById('dash-last-update').textContent='Atualizado: '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
       }catch(err){console.error(err);}
@@ -393,22 +405,36 @@
         if(df2&&f.date&&f.date.substring(0,10)>df2) return false;
         return true;
       });
-      renderDashboard(filtered);
+      var filteredFuelings=allFuelings.filter(function(f){
+        if(df&&String(f.driver_id)!==String(df)) return false;
+        if(vf&&String(f.vehicle_id)!==String(vf)) return false;
+        if(di&&f.date&&f.date.substring(0,10)<di) return false;
+        if(df2&&f.date&&f.date.substring(0,10)>df2) return false;
+        return true;
+      });
+      var filteredMaintenances=allMaintenances.filter(function(m){
+        if(vf&&String(m.vehicle_id)!==String(vf)) return false;
+        if(di&&m.date&&m.date.substring(0,10)<di) return false;
+        if(df2&&m.date&&m.date.substring(0,10)>df2) return false;
+        return true;
+      });
+      renderDashboard(filtered, filteredFuelings, filteredMaintenances);
     }
     function clearFilters(){
       document.getElementById('filter-motorista').value='';
       document.getElementById('filter-veiculo').value='';
       var now=new Date();
-      var y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
-      var lastDay=new Date(y,now.getMonth()+1,0).getDate();
-      document.getElementById('filter-data-ini').value=y+'-'+m+'-01';
-      document.getElementById('filter-data-fim').value=y+'-'+m+'-'+String(lastDay).padStart(2,'0');
+      var endD=new Date(now);
+      var startD=new Date(now);
+      startD.setDate(startD.getDate()-30);
+      document.getElementById('filter-data-ini').value=startD.toISOString().substring(0,10);
+      document.getElementById('filter-data-fim').value=endD.toISOString().substring(0,10);
       applyFilters();
     }
     function fmt(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
     function num(v){return parseFloat(v)||0;}
     function fmtDate(d){if(!d) return '';var p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
-    function renderDashboard(data){
+    function renderDashboard(data, fuelData, mainData){
       var totF=data.reduce(function(s,f){return s+num(f.freight);},0);
       var motAtivos=new Set(data.map(function(f){return f.driver_id;}).filter(Boolean)).size;
       var veiUsados=new Set(data.map(function(f){return f.vehicle_id;}).filter(Boolean)).size;
@@ -476,6 +502,38 @@
         type:'pie',
         data:{labels:['Fretes','Ped\u00e1gios','Despesas','SEST/SENAT','IRRF','INSS'],datasets:[{data:[tF,tT,tE,tS,tI,tN],backgroundColor:['#1261a0','#f08a24','#7c3aed','#16a34a','#dc2626','#0891b2'],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},
         options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Inter',size:11},boxWidth:14,padding:8}},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.label+': '+fmt(ctx.parsed);}}}}}
+      });
+      
+      // Abastecimentos
+      var byFuelVei={};
+      (fuelData||[]).forEach(function(f){
+        var k=f.plate||'Desconhecido';
+        var cost=num(f.quantity_liters)*num(f.price_per_liter);
+        if(!byFuelVei[k]) byFuelVei[k]=0;
+        byFuelVei[k]+=cost;
+      });
+      var fve=Object.entries(byFuelVei).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+      if(chartAbastecimentos) chartAbastecimentos.destroy();
+      chartAbastecimentos=new Chart(document.getElementById('chart-abastecimentos').getContext('2d'),{
+        type:'bar',
+        data:{labels:fve.map(function(e){return e[0];}),datasets:[{label:'Custo (R$)',data:fve.map(function(e){return e[1];}),backgroundColor:'rgba(240,138,36,0.8)',borderRadius:5}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+fmt(ctx.parsed.y);}}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:11}}},y:{grid:{color:'#f0f0f0'},ticks:{font:{family:'Inter',size:11},callback:function(v){return 'R$ '+v.toLocaleString('pt-BR');}}}}}
+      });
+
+      // Manutencoes
+      var byMainVei={};
+      (mainData||[]).forEach(function(m){
+        var k=m.plate||'Desconhecido';
+        var cost=num(m.cost);
+        if(!byMainVei[k]) byMainVei[k]=0;
+        byMainVei[k]+=cost;
+      });
+      var mve=Object.entries(byMainVei).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+      if(chartManutencoes) chartManutencoes.destroy();
+      chartManutencoes=new Chart(document.getElementById('chart-manutencoes').getContext('2d'),{
+        type:'bar',
+        data:{labels:mve.map(function(e){return e[0];}),datasets:[{label:'Custo (R$)',data:mve.map(function(e){return e[1];}),backgroundColor:'rgba(220,38,38,0.8)',borderRadius:5}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+fmt(ctx.parsed.y);}}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:11}}},y:{grid:{color:'#f0f0f0'},ticks:{font:{family:'Inter',size:11},callback:function(v){return 'R$ '+v.toLocaleString('pt-BR');}}}}}
       });
       // Ranking
       var tbody=document.getElementById('rank-motoristas-table');

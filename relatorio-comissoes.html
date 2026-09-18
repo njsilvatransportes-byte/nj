@@ -163,6 +163,7 @@ function render(){
   q('#rows').innerHTML=list.map(r=>'<tr><td>'+fmtDate(r.date)+'</td><td>'+r.driver_name+'</td><td>'+r.plate+'</td><td>'+r.client_name+'</td><td>'+r.destination+'</td><td>'+m(r.freight)+'</td><td>'+m(r.freight*.15)+'</td><td>'+m(r.tolls)+'</td><td>'+m(r.sest_senat)+'</td><td>'+m(r.irrf)+'</td><td>'+m(r.inss)+'</td></tr>').join('')
 }
 
+let _n=new Date(),_e=new Date(_n),_s=new Date(_n);_s.setDate(_s.getDate()-30);q('#start').value=_s.toISOString().substring(0,10);q('#end').value=_e.toISOString().substring(0,10);
 Promise.all([
   fetch('/api/freight_entries').then(r=>r.json()),
   fetch('/api/fuelings').then(r=>r.json())
@@ -176,6 +177,8 @@ Promise.all([
 document.querySelectorAll('input,select').forEach(e=>e.oninput=render);
 q('#clear').onclick=()=>{
   document.querySelectorAll('.filters input,.filters select').forEach(x=>x.value='');
+  q('#start').value=_s.toISOString().substring(0,10);
+  q('#end').value=_e.toISOString().substring(0,10);
   render()
 }
 </script>

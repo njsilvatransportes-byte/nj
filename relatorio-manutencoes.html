@@ -105,6 +105,7 @@ function render(){
   q('#rows').innerHTML=list.map(r=>`<tr><td>${fmtDate(r.entry_date)}</td><td>${fmtDate(r.exit_date)}</td><td>${r.plate||'-'}</td><td>${r.supplier_name||'-'}</td><td>${r.maintenance_type||'-'}</td><td>${r.category||'-'}</td><td>${m(r.cost)}</td><td>${r.status||'-'}</td></tr>`).join('')
 }
 
+let _n=new Date(),_e=new Date(_n),_s=new Date(_n);_s.setDate(_s.getDate()-30);q('#start').value=_s.toISOString().substring(0,10);q('#end').value=_e.toISOString().substring(0,10);
 fetch('/api/maintenance_entries').then(r=>r.json()).then(a=>{
   all=a;
   for(let [id,n] of new Map(a.map(x=>[x.vehicle_id,x.plate]))) if(n) q('#plate').innerHTML+='<option value="'+id+'">'+n+'</option>';
@@ -115,6 +116,8 @@ fetch('/api/maintenance_entries').then(r=>r.json()).then(a=>{
 document.querySelectorAll('input,select').forEach(e=>e.oninput=render);
 q('#clear').onclick=()=>{
   document.querySelectorAll('.filters input,.filters select').forEach(x=>x.value='');
+  q('#start').value=_s.toISOString().substring(0,10);
+  q('#end').value=_e.toISOString().substring(0,10);
   render()
 }
 </script>

@@ -100,7 +100,7 @@ th,td{padding:14px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:13p
   
   <article class="stat stat-orange"><span>Total Comissão (15%)</span><strong id="s-comissao">R$ 0,00</strong></article>
   <article class="stat red tooltip-custom">
-    <span>Impostos e Taxas</span>
+    <span>Pedágios/Impostos e taxas</span>
     <strong id="s-impostos">R$ 0,00</strong>
     <div class="tooltiptext">
       <div class="calc-row"><span>Pedágios</span><span id="tt-pedagios">- R$ 0,00</span></div>
@@ -121,7 +121,7 @@ th,td{padding:14px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:13p
 <th>Abastecimentos</th>
 <th>Manutenções</th>
 <th>Comissão (15%)</th>
-<th>Impostos e Taxas</th>
+<th>Pedágios/Impostos e taxas</th>
 <th>Resultado Líquido</th>
 </tr>
 </thead>
@@ -219,6 +219,7 @@ function render(){
   q('#rows').innerHTML = html;
 }
 
+let _n=new Date(),_e=new Date(_n),_s=new Date(_n);_s.setDate(_s.getDate()-30);q('#start').value=_s.toISOString().substring(0,10);q('#end').value=_e.toISOString().substring(0,10);
 Promise.all([
   fetch('/api/freight_entries').then(r=>r.json()),
   fetch('/api/fuelings').then(r=>r.json()),
@@ -244,6 +245,8 @@ Promise.all([
 document.querySelectorAll('input,select').forEach(e=>e.oninput=render);
 q('#clear').onclick=()=>{
   document.querySelectorAll('.filters input,.filters select').forEach(x=>x.value='');
+  q('#start').value=_s.toISOString().substring(0,10);
+  q('#end').value=_e.toISOString().substring(0,10);
   render()
 }
 </script>
