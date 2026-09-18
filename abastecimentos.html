@@ -40,7 +40,7 @@ body{background:#f6f8fb}
 <label>Quantidade de litros<input name="quantity_liters" type="number" step=".01"></label>
 <label>Motorista<select name="driver_id" id="d" required></select></label>
 <label>Posto<select name="station_id" id="s" required></select></label>
-<label>Observações<textarea name="notes"></textarea></label>
+<label>Observações<textarea name="notes" oninput="this.value = this.value.toUpperCase()"></textarea></label>
 <div class="sticky-actions">
 <button id="save-button" class="button button-primary" type="submit">Salvar abastecimento</button>
 <button id="cancel-edit" class="button button-secondary" type="button">Cancelar edição</button>

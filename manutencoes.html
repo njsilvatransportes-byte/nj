@@ -37,7 +37,7 @@ body{background:#f6f8fb}
 <label>Data de Saída<input name="exit_date" type="date"></label>
 <label>Placa<select name="vehicle_id" id="v" required></select></label>
 <label>Fornecedor<select name="supplier_id" id="s" required></select></label>
-<label>Tipo de Manutenção<input name="maintenance_type" type="text" placeholder="Ex: Troca de óleo, Revisão" required></label>
+<label>Tipo de Manutenção<input name="maintenance_type" type="text" placeholder="EX: TROCA DE ÓLEO, REVISÃO" oninput="this.value = this.value.toUpperCase()" required></label>
 <label>Categoria<select name="category" required>
   <option value="">Selecione</option>
   <option value="Peças">Peças</option>
@@ -50,7 +50,7 @@ body{background:#f6f8fb}
   <option value="Concluído">Concluído</option>
   <option value="Cancelado">Cancelado</option>
 </select></label>
-<label style="grid-column: 1 / -1;">Descrição/Observações<textarea name="description"></textarea></label>
+<label style="grid-column: 1 / -1;">Descrição/Observações<textarea name="description" oninput="this.value = this.value.toUpperCase()"></textarea></label>
 <div class="sticky-actions">
 <button id="save-button" class="button button-primary" type="submit">Salvar manutenção</button>
 <button id="cancel-edit" class="button button-secondary" type="button">Cancelar edição</button>

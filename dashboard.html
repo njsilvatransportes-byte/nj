@@ -7,17 +7,8 @@
     <meta name="description" content="Dashboard de faturamento de fretes NJTransportes." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
-    (function initAboutModal() {
-      var aboutBtn = document.getElementById('about-btn');
-      var aboutModal = document.getElementById('about-modal-backdrop');
-      if (aboutBtn && aboutModal) {
-        aboutBtn.addEventListener('click', function() { aboutModal.classList.remove('hidden'); });
-        aboutModal.addEventListener('click', function(e) { if (e.target === aboutModal) aboutModal.classList.add('hidden'); });
-      }
-    })();
-
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <link rel="stylesheet" href="styles.css" />
     <style>
       .nav-section-title{display:flex;align-items:center;gap:13px;color:#fff;padding:12px;font-weight:700;font-size:14px;cursor:pointer;user-select:none;border-radius:7px;transition:background .15s}
@@ -269,6 +260,17 @@
 
     </div>
     <script>
+    Chart.register(ChartDataLabels);
+    Chart.defaults.plugins.datalabels = {
+      color: '#fff',
+      font: { weight: 'bold', size: 10, family: 'Inter' },
+      formatter: function(value, context) {
+        var tot = context.dataset.data.reduce(function(a,b){return a+b}, 0);
+        var p = tot > 0 ? (value/tot)*100 : 0;
+        if (p < 4) return null; // hide labels if less than 4%
+        return p.toFixed(1) + '%';
+      }
+    };
     var SESSION_KEY = 'nj_session';
     function getSession(){try{return JSON.parse(sessionStorage.getItem(SESSION_KEY));}catch(e){return null;}}
     function setSession(u){sessionStorage.setItem(SESSION_KEY,JSON.stringify(u));}
@@ -468,7 +470,7 @@
           {label:'Ped\u00e1gios (R$)',data:sm.map(function(ym){return byMonth[ym].tolls;}),backgroundColor:'rgba(240,138,36,0.78)',borderRadius:6},
           {label:'Despesas (R$)',data:sm.map(function(ym){return byMonth[ym].expenses;}),backgroundColor:'rgba(124,58,237,0.68)',borderRadius:6}
         ]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{family:'Inter',size:12}}},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.dataset.label+': '+fmt(ctx.parsed.y);}}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:11}}},y:{grid:{color:'#f0f0f0'},ticks:{font:{family:'Inter',size:11},callback:function(v){return 'R$ '+v.toLocaleString('pt-BR');}}}}}
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{family:'Inter',size:12}}},tooltip:{callbacks:{label:function(ctx){var tot=ctx.dataset.data.reduce(function(a,b){return a+b},0);var p=tot>0?((ctx.parsed.y/tot)*100).toFixed(1)+'%':'0%';return ' '+ctx.dataset.label+': '+fmt(ctx.parsed.y)+' ('+p+')';}}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:11}}},y:{grid:{color:'#f0f0f0'},ticks:{font:{family:'Inter',size:11},callback:function(v){return 'R$ '+v.toLocaleString('pt-BR');}}}}}
       });
       // Motorista
       var byDrv={};
@@ -478,7 +480,7 @@
       chartMotorista=new Chart(document.getElementById('chart-motorista').getContext('2d'),{
         type:'bar',
         data:{labels:de.map(function(e){return e[0].split(' ').slice(0,2).join(' ');}),datasets:[{label:'Faturamento (R$)',data:de.map(function(e){return e[1];}),backgroundColor:['rgba(18,97,160,0.8)','rgba(22,163,74,0.8)','rgba(240,138,36,0.8)','rgba(124,58,237,0.8)','rgba(220,38,38,0.8)','rgba(6,182,212,0.8)','rgba(234,179,8,0.8)','rgba(236,72,153,0.8)'],borderRadius:5}]},
-        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+fmt(ctx.parsed.x);}}}},scales:{x:{grid:{color:'#f0f0f0'},ticks:{font:{family:'Inter',size:10},callback:function(v){return 'R$ '+(v/1000).toFixed(0)+'k';}}},y:{grid:{display:false},ticks:{font:{family:'Inter',size:11}}}}}
+        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){var tot=ctx.dataset.data.reduce(function(a,b){return a+b},0);var p=tot>0?((ctx.parsed.x/tot)*100).toFixed(1)+'%':'0%';return ' '+fmt(ctx.parsed.x)+' ('+p+')';}}}},scales:{x:{grid:{color:'#f0f0f0'},ticks:{font:{family:'Inter',size:10},callback:function(v){return 'R$ '+(v/1000).toFixed(0)+'k';}}},y:{grid:{display:false},ticks:{font:{family:'Inter',size:11}}}}}
       });
       // Veiculo
       var byVei={};
@@ -488,7 +490,7 @@
       chartVeiculo=new Chart(document.getElementById('chart-veiculo').getContext('2d'),{
         type:'doughnut',
         data:{labels:ve.map(function(e){return e[0];}),datasets:[{data:ve.map(function(e){return e[1];}),backgroundColor:['#1261a0','#16a34a','#f08a24','#7c3aed','#dc2626','#0891b2','#ca8a04','#db2777'],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Inter',size:11},boxWidth:14,padding:10}},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.label+': '+fmt(ctx.parsed);}}}}}
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Inter',size:11},boxWidth:14,padding:10}},tooltip:{callbacks:{label:function(ctx){var tot=ctx.dataset.data.reduce(function(a,b){return a+b},0);var p=tot>0?((ctx.parsed/tot)*100).toFixed(1)+'%':'0%';return ' '+ctx.label+': '+fmt(ctx.parsed)+' ('+p+')';}}}}}
       });
       // Composicao
       var tF=data.reduce(function(s,f){return s+num(f.freight);},0);
@@ -501,7 +503,7 @@
       chartComposicao=new Chart(document.getElementById('chart-composicao').getContext('2d'),{
         type:'pie',
         data:{labels:['Fretes','Ped\u00e1gios','Despesas','SEST/SENAT','IRRF','INSS'],datasets:[{data:[tF,tT,tE,tS,tI,tN],backgroundColor:['#1261a0','#f08a24','#7c3aed','#16a34a','#dc2626','#0891b2'],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Inter',size:11},boxWidth:14,padding:8}},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.label+': '+fmt(ctx.parsed);}}}}}
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Inter',size:11},boxWidth:14,padding:8}},tooltip:{callbacks:{label:function(ctx){var tot=ctx.dataset.data.reduce(function(a,b){return a+b},0);var p=tot>0?((ctx.parsed/tot)*100).toFixed(1)+'%':'0%';return ' '+ctx.label+': '+fmt(ctx.parsed)+' ('+p+')';}}}}}
       });
       
       // Abastecimentos
@@ -517,7 +519,7 @@
       chartAbastecimentos=new Chart(document.getElementById('chart-abastecimentos').getContext('2d'),{
         type:'bar',
         data:{labels:fve.map(function(e){return e[0];}),datasets:[{label:'Custo (R$)',data:fve.map(function(e){return e[1];}),backgroundColor:'rgba(240,138,36,0.8)',borderRadius:5}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+fmt(ctx.parsed.y);}}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:11}}},y:{grid:{color:'#f0f0f0'},ticks:{font:{family:'Inter',size:11},callback:function(v){return 'R$ '+v.toLocaleString('pt-BR');}}}}}
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){var tot=ctx.dataset.data.reduce(function(a,b){return a+b},0);var p=tot>0?((ctx.parsed.y/tot)*100).toFixed(1)+'%':'0%';return ' '+fmt(ctx.parsed.y)+' ('+p+')';}}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:11}}},y:{grid:{color:'#f0f0f0'},ticks:{font:{family:'Inter',size:11},callback:function(v){return 'R$ '+v.toLocaleString('pt-BR');}}}}}
       });
 
       // Manutencoes
@@ -533,7 +535,7 @@
       chartManutencoes=new Chart(document.getElementById('chart-manutencoes').getContext('2d'),{
         type:'bar',
         data:{labels:mve.map(function(e){return e[0];}),datasets:[{label:'Custo (R$)',data:mve.map(function(e){return e[1];}),backgroundColor:'rgba(220,38,38,0.8)',borderRadius:5}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+fmt(ctx.parsed.y);}}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:11}}},y:{grid:{color:'#f0f0f0'},ticks:{font:{family:'Inter',size:11},callback:function(v){return 'R$ '+v.toLocaleString('pt-BR');}}}}}
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){var tot=ctx.dataset.data.reduce(function(a,b){return a+b},0);var p=tot>0?((ctx.parsed.y/tot)*100).toFixed(1)+'%':'0%';return ' '+fmt(ctx.parsed.y)+' ('+p+')';}}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:11}}},y:{grid:{color:'#f0f0f0'},ticks:{font:{family:'Inter',size:11},callback:function(v){return 'R$ '+v.toLocaleString('pt-BR');}}}}}
       });
       // Ranking
       var tbody=document.getElementById('rank-motoristas-table');
