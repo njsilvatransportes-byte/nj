@@ -74,7 +74,7 @@ function openUserProfilePhotoModal(session) {
       $('#user-photo-file-input')?.click();
     });
     document.getElementById('user-profile-remove-btn').addEventListener('click', async () => {
-      if (confirm('Deseja realmente remover sua foto de perfil?')) {
+      if (await confirm('Deseja realmente remover sua foto de perfil?')) {
         await removeUserProfilePhoto();
         modal.classList.add('hidden');
       }
@@ -406,3 +406,4 @@ fetch('/api/db-status').then(function(r){return r.json();}).then(function(data){
     aboutModal.addEventListener('click', e => { if (e.target === aboutModal) aboutModal.classList.add('hidden'); });
   }
 })();
+

@@ -157,7 +157,7 @@ window.deleteFueling=async function(id){
   const item=fuelings.find(x=>String(x.id)===String(id));
   if(!item) return;
   const descricao=`${item.date||''} - ${item.plate||'sem placa'} - ${item.driver_name||'sem motorista'}`;
-  if(!confirm('Tem certeza que deseja excluir este abastecimento?\\n\\n'+descricao)) return;
+  if(!await confirm('Tem certeza que deseja excluir este abastecimento?\\n\\n'+descricao)) return;
   try{
     const s = JSON.parse(sessionStorage.getItem('nj_session')||'null');
     const response=await fetch('/api/fuelings/'+encodeURIComponent(id),{method:'DELETE', headers: s ? {'X-User-Id':s.id, 'X-User-Name':encodeURIComponent(s.name)} : {}});
@@ -204,6 +204,9 @@ Promise.all([
 </script>
 <script src="timeout.js"></script></body>
 </html>
+
+
+
 
 
 

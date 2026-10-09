@@ -76,7 +76,7 @@ async function approve(id){
   load();
 }
 async function inactivate(id){
-  if(!confirm('Tem certeza que deseja inativar este usuário? Ele não poderá mais acessar o sistema.')) return;
+  if(!await confirm('Tem certeza que deseja inativar este usuário? Ele não poderá mais acessar o sistema.')) return;
   await fetch('/api/users/'+id+'/inactivate',{method:'PUT'});
   showMsg('Usuário inativado. O acesso foi bloqueado.');
   load();
@@ -92,7 +92,7 @@ async function approvePassword(id){
   load();
 }
 async function rejectPassword(id){
-  if(!confirm('Tem certeza que deseja recusar a nova senha solicitada?')) return;
+  if(!await confirm('Tem certeza que deseja recusar a nova senha solicitada?')) return;
   await fetch('/api/users/'+id+'/reject-password',{method:'PUT'});
   showMsg('Solicitação de nova senha recusada.');
   load();
@@ -115,3 +115,6 @@ load();
 </script>
 <script src="timeout.js"></script>
 </body></html>
+
+
+

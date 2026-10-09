@@ -225,7 +225,7 @@
         (item.driver_name || 'sem motorista') + ' - ' +
         (item.destination || 'sem destino');
 
-      if(!confirm('Tem certeza que deseja excluir este frete?\n\n' + descricao)) return;
+      if(!await confirm('Tem certeza que deseja excluir este frete?\n\n' + descricao)) return;
 
       try{
         const s = JSON.parse(sessionStorage.getItem('nj_session')||'null');
@@ -293,3 +293,6 @@
   </script>
 <script src="timeout.js"></script></body>
 </html>
+
+
+
