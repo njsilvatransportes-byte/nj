@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "description": "Sistema local de gestão da NJTransportes",
-  "main": "server.js",
+  "main": "main.js",
   "scripts": {
     "start": "node server.js",
+    "app": "electron .",
+    "dist": "electron-builder",
     "dev": "node --watch server.js",
     "seed:admin": "node scripts/seed-admin.js",
     "import:fuelings": "node scripts/import_fuelings.js"
@@ -17,5 +19,34 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "build": {
+    "appId": "com.njtransportes.gestao",
+    "productName": "NJTransportes",
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "NJ Transportes"
+    },
+    "files": [
+      "**/*",
+      "!dist/*",
+      "!scripts/*",
+      "!logs/*",
+      "!*.bat"
+    ],
+    "extraResources": [
+      {
+        "from": ".env",
+        "to": ".env"
+      }
+    ]
   }
 }

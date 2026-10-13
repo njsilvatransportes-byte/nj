@@ -6,6 +6,9 @@ const set = (key, value) => { const previous = get(key); localStorage.setItem(ke
 const authView = $('#auth-view'), appView = $('#app-view');
 let isRegister = false, currentView = 'drivers', modalType = 'driver';
 let clientsData = [], suppliersData = [], currentDriverPhoto = '';
+let clientFreightsData = [], supplierMaintenancesData = [], supplierStockData = [];
+function formatMoney(value) { return Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function formatDate(value) { if (!value) return '-'; const s = String(value).split('T')[0]; const parts = s.split('-'); return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : s; }
 
 const statusClass = (status) => status === 'Ativo' || status === 'Em operação' ? 'active' : status === 'Pendente' || status === 'Manutenção' ? 'pending' : 'inactive';
 const label = (tag, content = '', full = false) => `<label class="${full ? 'full-width' : ''}">${tag}${content}</label>`;
@@ -192,7 +195,110 @@ async function showApp() {
 
 $('#logout-button').addEventListener('click', () => { sessionStorage.removeItem(keys.session); appView.classList.add('hidden'); authView.classList.remove('hidden'); });
 
-function renderDrivers() { const all = get(keys.drivers), query = $('#driver-search').value.toLowerCase(), list = all.filter(item => `${item.name} ${item.cpf}`.toLowerCase().includes(query)); $('#total-drivers').textContent = all.length; $('#active-drivers').textContent = all.filter(item => item.status === 'Ativo').length; $('#pending-drivers').textContent = all.filter(item => item.status === 'Pendente').length; const today = new Date(); today.setHours(0,0,0,0); const in60Days = new Date(today); in60Days.setDate(today.getDate() + 60); window.expiringCnhList = all.filter(item => { if(!item.expiry) return false; const [y, m, d] = item.expiry.split('T')[0].split('-'); if(!y || !m || !d) return false; const expDate = new Date(y, m-1, d); return expDate <= in60Days; }); const expiringElement = $('#expiring-drivers'); if(expiringElement) expiringElement.textContent = window.expiringCnhList.length; $('#drivers-table').innerHTML = list.map(item => { let exp = '-'; if(item.expiry) { const [y, m, d] = item.expiry.split('T')[0].split('-'); exp = `${d}/${m}/${y}`; } const avatarHtml = item.photo ? `<img src="${item.photo}" alt="Foto de ${item.name}" data-photo-view="${item.id}" title="Ver foto" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #e2e8f0;vertical-align:middle;margin-right:8px;cursor:pointer;transition:transform .15s,box-shadow .15s;" onmouseover="this.style.transform='scale(1.15)';this.style.boxShadow='0 4px 12px rgba(0,0,0,.25)'" onmouseout="this.style.transform='';this.style.boxShadow=''">` : `<span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ff9d35,#e76b16);color:#fff;font-weight:700;font-size:14px;vertical-align:middle;margin-right:8px;">${item.name.charAt(0).toUpperCase()}</span>`; return `<tr><td class="driver-cell" style="display:flex;align-items:center;">${avatarHtml}${item.name}</td><td>${item.cpf}</td><td>${item.cnh}</td><td>${item.category}</td><td>${exp}</td><td><span class="badge ${statusClass(item.status)}">${item.status}</span></td><td><button class="table-action" data-edit-driver="${item.id}">Editar</button></td></tr>`; }).join(''); $('#drivers-empty').classList.toggle('hidden', all.length > 0); }
+function renderDrivers() {
+  const all = get(keys.drivers);
+  const query = ($('#driver-search')?.value || '').toLowerCase().trim();
+  const filter = $('#driver-status-filter')?.value || 'Ativo';
+
+  const total = all.length;
+  const activeCount = all.filter(item => (item.status || 'Ativo') === 'Ativo').length;
+  const inactiveCount = all.filter(item => item.status === 'Inativo').length;
+  const pendingCount = all.filter(item => item.status === 'Pendente').length;
+
+  if ($('#total-drivers')) $('#total-drivers').textContent = total;
+  if ($('#active-drivers')) $('#active-drivers').textContent = activeCount;
+  if ($('#inactive-drivers')) $('#inactive-drivers').textContent = inactiveCount;
+  if ($('#pending-drivers')) $('#pending-drivers').textContent = pendingCount;
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const in60Days = new Date(today);
+  in60Days.setDate(today.getDate() + 60);
+  window.expiringCnhList = all.filter(item => {
+    if (!item.expiry) return false;
+    const [y, m, d] = item.expiry.split('T')[0].split('-');
+    if (!y || !m || !d) return false;
+    const expDate = new Date(y, m-1, d);
+    return expDate <= in60Days;
+  });
+  const expiringElement = $('#expiring-drivers');
+  if (expiringElement) expiringElement.textContent = window.expiringCnhList.length;
+
+  const totalCard = $('#total-drivers-card');
+  const activeCard = $('#active-drivers-card');
+  const inactiveCard = $('#inactive-drivers-card');
+  const pendingCard = $('#pending-drivers-card');
+  if (totalCard) { totalCard.style.outline = filter === 'Todos' ? '2.5px solid #1261a0' : 'none'; totalCard.style.outlineOffset = '2px'; }
+  if (activeCard) { activeCard.style.outline = filter === 'Ativo' ? '2.5px solid #16a34a' : 'none'; activeCard.style.outlineOffset = '2px'; }
+  if (inactiveCard) { inactiveCard.style.outline = filter === 'Inativo' ? '2.5px solid #64748b' : 'none'; inactiveCard.style.outlineOffset = '2px'; }
+  if (pendingCard) { pendingCard.style.outline = filter === 'Pendente' ? '2.5px solid #d97706' : 'none'; pendingCard.style.outlineOffset = '2px'; }
+
+  const filtered = all.filter(item => {
+    const status = item.status || 'Ativo';
+    if (filter === 'Ativo' && status !== 'Ativo') return false;
+    if (filter === 'Inativo' && status !== 'Inativo') return false;
+    if (filter === 'Pendente' && status !== 'Pendente') return false;
+
+    if (query) {
+      const matchText = `${item.name || ''} ${item.cpf || ''} ${item.cnh || ''} ${item.category || ''} ${item.phone || ''}`.toLowerCase();
+      if (!matchText.includes(query)) return false;
+    }
+    return true;
+  });
+
+  const tableBody = $('#drivers-table');
+  if (tableBody) {
+    tableBody.innerHTML = filtered.map(item => {
+      let exp = '-';
+      if (item.expiry) {
+        const [y, m, d] = item.expiry.split('T')[0].split('-');
+        exp = `${d}/${m}/${y}`;
+      }
+      const avatarHtml = item.photo ? `<img src="${item.photo}" alt="Foto de ${item.name}" data-photo-view="${item.id}" title="Ver foto" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #e2e8f0;vertical-align:middle;margin-right:8px;cursor:pointer;transition:transform .15s,box-shadow .15s;" onmouseover="this.style.transform='scale(1.15)';this.style.boxShadow='0 4px 12px rgba(0,0,0,.25)'" onmouseout="this.style.transform='';this.style.boxShadow=''">` : `<span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ff9d35,#e76b16);color:#fff;font-weight:700;font-size:14px;vertical-align:middle;margin-right:8px;">${(item.name || '?').charAt(0).toUpperCase()}</span>`;
+      return `<tr><td class="driver-cell" style="display:flex;align-items:center;">${avatarHtml}${item.name}</td><td>${item.cpf || '-'}</td><td>${item.cnh || '-'}</td><td>${item.category || '-'}</td><td>${exp}</td><td><span class="badge ${statusClass(item.status || 'Ativo')}">${item.status || 'Ativo'}</span></td><td><button class="table-action" data-edit-driver="${item.id}">Editar</button></td></tr>`;
+    }).join('');
+  }
+
+  const emptyEl = $('#drivers-empty');
+  if (emptyEl) {
+    if (total === 0) {
+      emptyEl.classList.remove('hidden');
+      const titleEl = $('#drivers-empty-title');
+      const descEl = $('#drivers-empty-desc');
+      if (titleEl) titleEl.textContent = 'Nenhum motorista cadastrado';
+      if (descEl) descEl.textContent = 'Comece adicionando o primeiro motorista da empresa.';
+      emptyEl.querySelector('button')?.classList.remove('hidden');
+    } else if (filtered.length === 0) {
+      emptyEl.classList.remove('hidden');
+      const titleEl = $('#drivers-empty-title');
+      const descEl = $('#drivers-empty-desc');
+      if (filter === 'Inativo') {
+        if (titleEl) titleEl.textContent = 'Nenhum motorista inativo';
+        if (descEl) descEl.textContent = 'Não há motoristas inativos no momento.';
+      } else if (filter === 'Pendente') {
+        if (titleEl) titleEl.textContent = 'Nenhum motorista pendente';
+        if (descEl) descEl.textContent = 'Não há motoristas com documentação pendente no momento.';
+      } else if (filter === 'Ativo') {
+        if (titleEl) titleEl.textContent = 'Nenhum motorista ativo';
+        if (descEl) descEl.textContent = query ? 'Nenhum motorista ativo correspondente à busca.' : 'Não há motoristas ativos no momento.';
+      } else {
+        if (titleEl) titleEl.textContent = 'Nenhum motorista encontrado';
+        if (descEl) descEl.textContent = 'Nenhum motorista corresponde aos critérios da busca.';
+      }
+      emptyEl.querySelector('button')?.classList.add('hidden');
+    } else {
+      emptyEl.classList.add('hidden');
+    }
+  }
+}
+
+window.filterDriversByStatus = function(status) {
+  const select = $('#driver-status-filter');
+  if (select) {
+    select.value = status;
+    renderDrivers();
+  }
+};
 window.openCnhReport = function() { const today = new Date(); today.setHours(0,0,0,0); const html = (window.expiringCnhList || []).sort((a,b) => new Date(a.expiry) - new Date(b.expiry)).map(item => { const [y, m, d] = item.expiry.split('T')[0].split('-'); const expDate = new Date(y, m-1, d); const isExpired = expDate < today; const statusText = isExpired ? 'Vencida' : 'A vencer'; const statusColor = isExpired ? '#ef4444' : '#f59e0b'; const statusBg = isExpired ? '#fee2e2' : '#fef3c7'; return `<tr><td style="font-weight:600">${item.name}</td><td>${item.cpf}</td><td>${item.cnh}</td><td>${d}/${m}/${y}</td><td><span style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;color:${statusColor};background:${statusBg}">${statusText}</span></td></tr>`; }).join(''); document.getElementById('cnh-report-table').innerHTML = html || '<tr><td colspan="5" style="text-align:center;padding:32px;color:#6b7280;">✅ Nenhuma CNH a vencer nos próximos 60 dias.</td></tr>'; document.getElementById('cnh-report-modal-backdrop').classList.remove('hidden'); };
 window.openDriversReport = function(filter) { const all = get(keys.drivers); let list, title, emptyMsg; if (filter === 'ativo') { list = all.filter(d => d.status === 'Ativo'); title = '🟢 Motoristas Ativos'; emptyMsg = 'Nenhum motorista ativo encontrado.'; } else if (filter === 'pendente') { list = all.filter(d => d.status === 'Pendente'); title = '⚠️ Documentação Pendente'; emptyMsg = 'Nenhum motorista com documentação pendente.'; } else { list = all; title = '📋 Todos os Motoristas'; emptyMsg = 'Nenhum motorista cadastrado.'; } document.getElementById('drivers-report-title').textContent = title; const today = new Date(); today.setHours(0,0,0,0); const html = list.map(item => { let exp = '-'; let cnhSt = ''; let cnhBg = ''; if (item.expiry) { const [y, m, d] = item.expiry.split('T')[0].split('-'); const expDate = new Date(y, m-1, d); exp = `${d}/${m}/${y}`; const in60 = new Date(today); in60.setDate(today.getDate()+60); if (expDate < today) { cnhSt = 'Vencida'; cnhBg = '#fee2e2'; } else if (expDate <= in60) { cnhSt = 'A vencer'; cnhBg = '#fef3c7'; } else { cnhSt = 'Em dia'; cnhBg = '#e9f8ef'; } } const stCls = item.status==='Ativo'?'#e9f8ef':item.status==='Pendente'?'#fff3db':'#eef0f3'; const stColor = item.status==='Ativo'?'#187444':item.status==='Pendente'?'#a15d00':'#667085'; const avatarHtml = item.photo ? `<img src="${item.photo}" alt="" style="width:30px;height:30px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;border:2px solid #e2e8f0;">` : `<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#ff9d35,#e76b16);color:#fff;font-weight:700;font-size:12px;vertical-align:middle;margin-right:8px;">${item.name.charAt(0).toUpperCase()}</span>`; return `<tr><td style="display:flex;align-items:center;font-weight:600">${avatarHtml}${item.name}</td><td>${item.cpf||'-'}</td><td>${item.cnh||'-'}</td><td>${item.category||'-'}</td><td>${exp}${cnhSt ? ` <span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:${cnhBg}">${cnhSt}</span>` : ''}</td><td><span style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;color:${stColor};background:${stCls}">${item.status}</span></td><td>${item.phone||'-'}</td></tr>`; }).join(''); document.getElementById('drivers-report-table').innerHTML = html || `<tr><td colspan="7" style="text-align:center;padding:32px;color:#6b7280;">${emptyMsg}</td></tr>`; document.getElementById('drivers-report-modal-backdrop').classList.remove('hidden'); };
 
@@ -239,11 +345,107 @@ window.printModalReport = function(tableId, title) {
   win.document.close();
 };
 
-function renderVehicles() { const all = get(keys.vehicles), query = $('#vehicle-search').value.toLowerCase(), list = all.filter(item => `${item.plate} ${item.model}`.toLowerCase().includes(query)); $('#total-vehicles').textContent = all.length; $('#active-vehicles').textContent = all.filter(item => item.status === 'Em operação').length; $('#maintenance-vehicles').textContent = all.filter(item => item.status === 'Manutenção').length; $('#vehicles-table').innerHTML = list.map(item => `<tr><td class="driver-cell">${item.plate}</td><td>${item.model}</td><td>${item.type}</td><td>${item.year}</td><td><span class="badge ${statusClass(item.status)}">${item.status}</span></td><td><button class="table-action" data-edit-vehicle="${item.id}">Editar</button></td></tr>`).join(''); $('#vehicles-empty').classList.toggle('hidden', all.length > 0); }
+function renderVehicles() {
+  const all = get(keys.vehicles);
+  const query = ($('#vehicle-search')?.value || '').toLowerCase().trim();
+  const filter = $('#vehicle-status-filter')?.value || 'Em operação';
+
+  const total = all.length;
+  const activeCount = all.filter(item => (item.status || 'Em operação') === 'Em operação').length;
+  const maintenanceCount = all.filter(item => item.status === 'Manutenção').length;
+  const inactiveCount = all.filter(item => item.status === 'Inativo').length;
+
+  if ($('#total-vehicles')) $('#total-vehicles').textContent = total;
+  if ($('#active-vehicles')) $('#active-vehicles').textContent = activeCount;
+  if ($('#maintenance-vehicles')) $('#maintenance-vehicles').textContent = maintenanceCount;
+  if ($('#inactive-vehicles')) $('#inactive-vehicles').textContent = inactiveCount;
+
+  const totalCard = $('#total-vehicles-card');
+  const activeCard = $('#active-vehicles-card');
+  const maintenanceCard = $('#maintenance-vehicles-card');
+  const inactiveCard = $('#inactive-vehicles-card');
+  if (totalCard) { totalCard.style.outline = filter === 'Todos' ? '2.5px solid #1261a0' : 'none'; totalCard.style.outlineOffset = '2px'; }
+  if (activeCard) { activeCard.style.outline = filter === 'Em operação' ? '2.5px solid #16a34a' : 'none'; activeCard.style.outlineOffset = '2px'; }
+  if (maintenanceCard) { maintenanceCard.style.outline = filter === 'Manutenção' ? '2.5px solid #d97706' : 'none'; maintenanceCard.style.outlineOffset = '2px'; }
+  if (inactiveCard) { inactiveCard.style.outline = filter === 'Inativo' ? '2.5px solid #64748b' : 'none'; inactiveCard.style.outlineOffset = '2px'; }
+
+  const filtered = all.filter(item => {
+    const status = item.status || 'Em operação';
+    if (filter === 'Em operação' && status !== 'Em operação') return false;
+    if (filter === 'Manutenção' && status !== 'Manutenção') return false;
+    if (filter === 'Inativo' && status !== 'Inativo') return false;
+
+    if (query) {
+      const matchText = `${item.plate || ''} ${item.model || ''} ${item.type || ''} ${item.year || ''}`.toLowerCase();
+      if (!matchText.includes(query)) return false;
+    }
+    return true;
+  });
+
+  const tableBody = $('#vehicles-table');
+  if (tableBody) {
+    tableBody.innerHTML = filtered.map(item => `
+      <tr>
+        <td class="driver-cell">${item.plate}</td>
+        <td>${item.model}</td>
+        <td>${item.type}</td>
+        <td>${item.year}</td>
+        <td><span class="badge ${statusClass(item.status || 'Em operação')}">${item.status || 'Em operação'}</span></td>
+        <td><button class="table-action" data-edit-vehicle="${item.id}">Editar</button></td>
+      </tr>
+    `).join('');
+  }
+
+  const emptyEl = $('#vehicles-empty');
+  if (emptyEl) {
+    if (total === 0) {
+      emptyEl.classList.remove('hidden');
+      const titleEl = $('#vehicles-empty-title');
+      const descEl = $('#vehicles-empty-desc');
+      if (titleEl) titleEl.textContent = 'Nenhum veículo cadastrado';
+      if (descEl) descEl.textContent = 'Comece adicionando o primeiro veículo da frota.';
+      emptyEl.querySelector('button')?.classList.remove('hidden');
+    } else if (filtered.length === 0) {
+      emptyEl.classList.remove('hidden');
+      const titleEl = $('#vehicles-empty-title');
+      const descEl = $('#vehicles-empty-desc');
+      if (filter === 'Inativo') {
+        if (titleEl) titleEl.textContent = 'Nenhum veículo inativo';
+        if (descEl) descEl.textContent = 'Não há veículos inativos no momento.';
+      } else if (filter === 'Manutenção') {
+        if (titleEl) titleEl.textContent = 'Nenhum veículo em manutenção';
+        if (descEl) descEl.textContent = 'Não há veículos em manutenção no momento.';
+      } else if (filter === 'Em operação') {
+        if (titleEl) titleEl.textContent = 'Nenhum veículo em operação';
+        if (descEl) descEl.textContent = query ? 'Nenhum veículo em operação correspondente à busca.' : 'Não há veículos em operação no momento.';
+      } else {
+        if (titleEl) titleEl.textContent = 'Nenhum veículo encontrado';
+        if (descEl) descEl.textContent = 'Nenhum veículo corresponde aos critérios da busca.';
+      }
+      emptyEl.querySelector('button')?.classList.add('hidden');
+    } else {
+      emptyEl.classList.add('hidden');
+    }
+  }
+}
+
+window.filterVehiclesByStatus = function(status) {
+  const select = $('#vehicle-status-filter');
+  if (select) {
+    select.value = status;
+    renderVehicles();
+  }
+};
+
 function switchView(view) { if (view === 'clients') return showClients(); if (view === 'suppliers') return showSuppliers(); currentView = view; const vehicles = view === 'vehicles'; $('#drivers-view').classList.toggle('hidden', vehicles); $('#vehicles-view').classList.toggle('hidden', !vehicles); $('#clients-view').classList.add('hidden'); $('#suppliers-view').classList.add('hidden'); $('#page-title').textContent = vehicles ? 'Veículos' : 'Motoristas'; $('#new-item-button').textContent = vehicles ? '+ Novo veículo' : '+ Novo motorista'; document.querySelectorAll('[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === view)); vehicles ? renderVehicles() : renderDrivers(); }
 document.querySelectorAll('[data-view]').forEach(link => link.addEventListener('click', event => { event.preventDefault(); switchView(link.dataset.view); }));
 $('#driver-search').addEventListener('input', renderDrivers); $('#vehicle-search').addEventListener('input', renderVehicles);
-function fields(type, item = {}) { const v = (k, def = '') => item[k] !== undefined ? item[k] : def; if (type === 'client') return [label(`Nome / razão social<input name="name" required value="${v('name')}" />`),label(`CPF / CNPJ<input name="document" value="${v('document')}" />`),label(`Telefone<input name="phone" value="${v('phone')}" />`),label(`CEP<input name="zip_code" value="${v('zip_code')}" />`),label(`Endereço<input name="address" required value="${v('address')}" />`),label(`Número<input name="number" value="${v('number')}" />`),label(`Bairro<input name="neighborhood" value="${v('neighborhood')}" />`),label(`Cidade<input name="city" required value="${v('city')}" />`),label(`UF<input name="state" required maxlength="2" value="${v('state')}" />`),label(`Referência<input name="reference" value="${v('reference')}" />`),label(`Status<select name="status"><option value="Ativo" ${v('status', 'Ativo') === 'Ativo' ? 'selected' : ''}>Ativo</option><option value="Inativo" ${v('status') === 'Inativo' ? 'selected' : ''}>Inativo</option></select>`)].join(''); if (type === 'supplier') return [label(`Razão Social<input name="name" required value="${v('name')}" />`),label(`Nome Fantasia<input name="trade_name" value="${v('trade_name')}" />`),label(`CNPJ<input name="document" value="${v('document')}" />`),label(`Telefone<input name="phone" placeholder="(xx) xxxxx-xxxx" value="${v('phone')}" />`),label(`E-mail<input name="email" type="email" value="${v('email')}" />`),label(`Tipo<select name="supplier_type" required><option value="" disabled ${!v('supplier_type') ? 'selected' : ''}>Selecione...</option><option value="Serviços" ${v('supplier_type') === 'Serviços' ? 'selected' : ''}>Serviços</option><option value="Peças" ${v('supplier_type') === 'Peças' ? 'selected' : ''}>Peças</option><option value="Ambos" ${v('supplier_type') === 'Ambos' ? 'selected' : ''}>Ambos</option></select>`),label(`CEP<input name="zip_code" value="${v('zip_code')}" placeholder="00000-000" />`),label(`Endereço<input name="address" required value="${v('address')}" />`),label(`Número<input name="number" value="${v('number')}" />`),label(`Bairro<input name="neighborhood" value="${v('neighborhood')}" />`),label(`Cidade<input name="city" required value="${v('city')}" />`),label(`UF<input name="state" required maxlength="2" value="${v('state')}" />`)].join(''); const expiryVal = item.expiry ? item.expiry.split('T')[0] : ''; const photoHtml = `<div class="full-width" style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:12px 0;"><div id="photo-preview-wrap" style="position:relative;width:110px;height:110px;"><img id="photo-preview" src="${v('photo') || ''}" alt="" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid #e2e8f0;background:#f1f5f9;display:${v('photo') ? 'block' : 'none'};"><div id="photo-placeholder" style="width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#ff9d35,#e76b16);display:${v('photo') ? 'none' : 'flex'};align-items:center;justify-content:center;font-size:42px;color:#fff;font-weight:700;">${v('name') ? v('name').charAt(0).toUpperCase() : '?'}</div></div><label for="photo-upload" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:7px 18px;border-radius:8px;background:#f1f5f9;border:1.5px dashed #cbd5e1;color:#64748b;font-weight:500;transition:all .2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">📷 Selecionar foto</label><input type="file" id="photo-upload" accept="image/*" style="display:none;" onchange="(function(el){const f=el.files[0];if(!f)return;if(f.size>2097152){alert('Imagem muito grande. Máximo 2 MB.');el.value='';return;}const r=new FileReader();r.onload=function(e){const img=document.getElementById('photo-preview');const ph=document.getElementById('photo-placeholder');img.src=e.target.result;img.style.display='block';ph.style.display='none';window._pendingDriverPhoto=e.target.result;};r.readAsDataURL(f);})(this);"><p style="font-size:11px;color:#94a3b8;margin:0;">JPG, PNG ou WebP — máx. 2 MB</p></div>`; return type === 'vehicle' ? label(`Placa<input id="plate" required value="${v('plate')}" />`) + label(`Modelo<input id="model" required value="${v('model')}" />`) + label(`Tipo<input id="type" required value="${v('type')}" />`) + label(`Ano<input id="year" required value="${v('year')}" />`) + label(`Status<select id="status"><option value="Em operação" ${v('status', 'Em operação') === 'Em operação' ? 'selected' : ''}>Em operação</option><option value="Manutenção" ${v('status') === 'Manutenção' ? 'selected' : ''}>Em manutenção</option></select>`) : photoHtml + label(`Nome completo<input id="name" required value="${v('name')}" />`) + label(`CPF<input id="cpf" required value="${v('cpf')}" />`) + label(`CNH<input id="cnh" required value="${v('cnh')}" />`) + label(`Categoria<select id="category" required><option value="" disabled ${!v('category') ? 'selected' : ''}>Selecione...</option><option value="A" ${v('category') === 'A' ? 'selected' : ''}>A</option><option value="B" ${v('category') === 'B' ? 'selected' : ''}>B</option><option value="C" ${v('category') === 'C' ? 'selected' : ''}>C</option><option value="D" ${v('category') === 'D' ? 'selected' : ''}>D</option><option value="E" ${v('category') === 'E' ? 'selected' : ''}>E</option><option value="AB" ${v('category') === 'AB' ? 'selected' : ''}>AB</option><option value="AC" ${v('category') === 'AC' ? 'selected' : ''}>AC</option><option value="AD" ${v('category') === 'AD' ? 'selected' : ''}>AD</option><option value="AE" ${v('category') === 'AE' ? 'selected' : ''}>AE</option></select>`) + label(`Validade<input id="expiry" type="date" required value="${expiryVal}" />`) + label(`Status<select id="status"><option value="Ativo" ${v('status', 'Ativo') === 'Ativo' ? 'selected' : ''}>Ativo</option><option value="Pendente" ${v('status') === 'Pendente' ? 'selected' : ''}>Pendente</option><option value="Inativo" ${v('status') === 'Inativo' ? 'selected' : ''}>Inativo</option></select>`) + label(`Celular<input name="phone" id="phone" placeholder="(xx) xxxxx-xxxx" value="${v('phone')}" />`) + label(`CEP<input name="zip_code" id="zip_code" value="${v('zip_code')}" />`) + label(`Endereço<input name="address" id="address" value="${v('address')}" />`) + label(`Número<input name="number" id="number" value="${v('number')}" />`) + label(`Bairro<input name="neighborhood" id="neighborhood" value="${v('neighborhood')}" />`) + label(`Cidade<input name="city" id="city" value="${v('city')}" />`) + label(`UF<input name="state" id="state" maxlength="2" value="${v('state')}" />`); }
+$('#driver-status-filter')?.addEventListener('change', renderDrivers);
+$('#vehicle-status-filter')?.addEventListener('change', renderVehicles);
+$('#client-search')?.addEventListener('input', renderClients); $('#client-status-filter')?.addEventListener('change', renderClients);
+$('#supplier-search')?.addEventListener('input', renderSuppliers); $('#supplier-status-filter')?.addEventListener('change', renderSuppliers);
+
+function fields(type, item = {}) { const v = (k, def = '') => item[k] !== undefined ? item[k] : def; if (type === 'client') return [label(`Nome / razão social<input name="name" required value="${v('name')}" />`),label(`CPF / CNPJ<input name="document" value="${v('document')}" />`),label(`Telefone<input name="phone" value="${v('phone')}" />`),label(`CEP<input name="zip_code" value="${v('zip_code')}" />`),label(`Endereço<input name="address" required value="${v('address')}" />`),label(`Número<input name="number" value="${v('number')}" />`),label(`Bairro<input name="neighborhood" value="${v('neighborhood')}" />`),label(`Cidade<input name="city" required value="${v('city')}" />`),label(`UF<input name="state" required maxlength="2" value="${v('state')}" />`),label(`Referência<input name="reference" value="${v('reference')}" />`),label(`Status<select name="status"><option value="Ativo" ${v('status', 'Ativo') === 'Ativo' ? 'selected' : ''}>Ativo</option><option value="Inativo" ${v('status') === 'Inativo' ? 'selected' : ''}>Inativo</option></select>`)].join(''); if (type === 'supplier') return [label(`Razão Social<input name="name" required value="${v('name')}" />`),label(`Nome Fantasia<input name="trade_name" value="${v('trade_name')}" />`),label(`CNPJ<input name="document" value="${v('document')}" />`),label(`Telefone<input name="phone" placeholder="(xx) xxxxx-xxxx" value="${v('phone')}" />`),label(`E-mail<input name="email" type="email" value="${v('email')}" />`),label(`Tipo<select name="supplier_type" required><option value="" disabled ${!v('supplier_type') ? 'selected' : ''}>Selecione...</option><option value="Serviços" ${v('supplier_type') === 'Serviços' ? 'selected' : ''}>Serviços</option><option value="Peças" ${v('supplier_type') === 'Peças' ? 'selected' : ''}>Peças</option><option value="Ambos" ${v('supplier_type') === 'Ambos' ? 'selected' : ''}>Ambos</option></select>`),label(`CEP<input name="zip_code" value="${v('zip_code')}" placeholder="00000-000" />`),label(`Endereço<input name="address" required value="${v('address')}" />`),label(`Número<input name="number" value="${v('number')}" />`),label(`Bairro<input name="neighborhood" value="${v('neighborhood')}" />`),label(`Cidade<input name="city" required value="${v('city')}" />`),label(`UF<input name="state" required maxlength="2" value="${v('state')}" />`),label(`Status<select name="status"><option value="Ativo" ${v('status', 'Ativo') === 'Ativo' ? 'selected' : ''}>Ativo</option><option value="Inativo" ${v('status') === 'Inativo' ? 'selected' : ''}>Inativo</option></select>`)].join(''); const expiryVal = item.expiry ? item.expiry.split('T')[0] : ''; const photoHtml = `<div class="full-width" style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:12px 0;"><div id="photo-preview-wrap" style="position:relative;width:110px;height:110px;"><img id="photo-preview" src="${v('photo') || ''}" alt="" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid #e2e8f0;background:#f1f5f9;display:${v('photo') ? 'block' : 'none'};"><div id="photo-placeholder" style="width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#ff9d35,#e76b16);display:${v('photo') ? 'none' : 'flex'};align-items:center;justify-content:center;font-size:42px;color:#fff;font-weight:700;">${v('name') ? v('name').charAt(0).toUpperCase() : '?'}</div></div><label for="photo-upload" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:7px 18px;border-radius:8px;background:#f1f5f9;border:1.5px dashed #cbd5e1;color:#64748b;font-weight:500;transition:all .2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">📷 Selecionar foto</label><input type="file" id="photo-upload" accept="image/*" style="display:none;" onchange="(function(el){const f=el.files[0];if(!f)return;if(f.size>2097152){alert('Imagem muito grande. Máximo 2 MB.');el.value='';return;}const r=new FileReader();r.onload=function(e){const img=document.getElementById('photo-preview');const ph=document.getElementById('photo-placeholder');img.src=e.target.result;img.style.display='block';ph.style.display='none';window._pendingDriverPhoto=e.target.result;};r.readAsDataURL(f);})(this);"><p style="font-size:11px;color:#94a3b8;margin:0;">JPG, PNG ou WebP — máx. 2 MB</p></div>`; return type === 'vehicle' ? label(`Placa<input id="plate" required value="${v('plate')}" />`) + label(`Modelo<input id="model" required value="${v('model')}" />`) + label(`Tipo<input id="type" required value="${v('type')}" />`) + label(`Ano<input id="year" required value="${v('year')}" />`) + label(`Status<select id="status"><option value="Em operação" ${v('status', 'Em operação') === 'Em operação' ? 'selected' : ''}>Em operação</option><option value="Manutenção" ${v('status') === 'Manutenção' ? 'selected' : ''}>Em manutenção</option><option value="Inativo" ${v('status') === 'Inativo' ? 'selected' : ''}>Inativo</option></select>`) : photoHtml + label(`Nome completo<input id="name" required value="${v('name')}" />`) + label(`CPF<input id="cpf" required value="${v('cpf')}" />`) + label(`CNH<input id="cnh" required value="${v('cnh')}" />`) + label(`Categoria<select id="category" required><option value="" disabled ${!v('category') ? 'selected' : ''}>Selecione...</option><option value="A" ${v('category') === 'A' ? 'selected' : ''}>A</option><option value="B" ${v('category') === 'B' ? 'selected' : ''}>B</option><option value="C" ${v('category') === 'C' ? 'selected' : ''}>C</option><option value="D" ${v('category') === 'D' ? 'selected' : ''}>D</option><option value="E" ${v('category') === 'E' ? 'selected' : ''}>E</option><option value="AB" ${v('category') === 'AB' ? 'selected' : ''}>AB</option><option value="AC" ${v('category') === 'AC' ? 'selected' : ''}>AC</option><option value="AD" ${v('category') === 'AD' ? 'selected' : ''}>AD</option><option value="AE" ${v('category') === 'AE' ? 'selected' : ''}>AE</option></select>`) + label(`Validade<input id="expiry" type="date" required value="${expiryVal}" />`) + label(`Status<select id="status"><option value="Ativo" ${v('status', 'Ativo') === 'Ativo' ? 'selected' : ''}>Ativo</option><option value="Pendente" ${v('status') === 'Pendente' ? 'selected' : ''}>Pendente</option><option value="Inativo" ${v('status') === 'Inativo' ? 'selected' : ''}>Inativo</option></select>`) + label(`Celular<input name="phone" id="phone" placeholder="(xx) xxxxx-xxxx" value="${v('phone')}" />`) + label(`CEP<input name="zip_code" id="zip_code" value="${v('zip_code')}" />`) + label(`Endereço<input name="address" id="address" value="${v('address')}" />`) + label(`Número<input name="number" id="number" value="${v('number')}" />`) + label(`Bairro<input name="neighborhood" id="neighborhood" value="${v('neighborhood')}" />`) + label(`Cidade<input name="city" id="city" value="${v('city')}" />`) + label(`UF<input name="state" id="state" maxlength="2" value="${v('state')}" />`); }
 function openModal(type, item) { modalType = type; window._pendingDriverPhoto = null; currentDriverPhoto = (type === 'driver' && item && item.photo) ? item.photo : ''; const title = type === 'vehicle' ? 'veículo' : type === 'client' ? 'cliente' : type === 'supplier' ? 'fornecedor' : 'motorista'; $('#modal-title').textContent = `${item ? 'Editar' : 'Novo'} ${title}`; $('#modal-fields').innerHTML = `<input type="hidden" id="record-id" value="${item?.id || ''}" />${fields(type, item)}`; $('#modal-backdrop').classList.remove('hidden'); }
 function closeModal() { $('#modal-backdrop').classList.add('hidden'); $('#record-error').textContent = ''; }
 $('#new-item-button').addEventListener('click', () => openModal(currentView === 'clients' ? 'client' : currentView === 'suppliers' ? 'supplier' : currentView === 'vehicles' ? 'vehicle' : 'driver')); document.addEventListener('click', event => { if (event.target.dataset.new) openModal(event.target.dataset.new); if (event.target.dataset.editDriver) { const item = get(keys.drivers).find(d => String(d.id) === String(event.target.dataset.editDriver)); if (item) openModal('driver', item); } if (event.target.dataset.editVehicle) { const item = get(keys.vehicles).find(v => String(v.id) === String(event.target.dataset.editVehicle)); if (item) openModal('vehicle', item); } if (event.target.dataset.editClient) { const item = clientsData.find(c => String(c.id) === String(event.target.dataset.editClient)); if (item) openModal('client', item); } if (event.target.dataset.editSupplier) { const item = suppliersData.find(c => String(c.id) === String(event.target.dataset.editSupplier)); if (item) openModal('supplier', item); } }); $('#close-modal').addEventListener('click', closeModal); $('#cancel-modal').addEventListener('click', closeModal); $('#modal-backdrop').addEventListener('click', event => { if (event.target === $('#modal-backdrop')) closeModal(); });
@@ -260,19 +462,274 @@ $('#record-form').addEventListener('submit', async event => { event.preventDefau
         data = Object.fromEntries(new FormData(event.target));
         const clientUpperFields = ['name','address','neighborhood','city','state','reference'];
         clientUpperFields.forEach(k => { if (data[k]) data[k] = data[k].toUpperCase(); }); } else if (modalType === 'supplier') { resource = 'suppliers'; data = Object.fromEntries(new FormData(event.target)); ['name','trade_name','address','neighborhood','city','state'].forEach(k => { if (data[k]) data[k] = data[k].toUpperCase(); }); } else if (modalType === 'vehicle') { resource = 'vehicles'; data = { plate: $('#plate').value.trim(), model: ($('#model').value.trim()).toUpperCase(), type: ($('#type').value.trim()).toUpperCase(), year: $('#year').value, status: $('#status').value || 'Em operação', renavam: '' }; } else { resource = 'drivers'; data = { name: ($('#name').value.trim()).toUpperCase(), cpf: $('#cpf').value.trim(), cnh: $('#cnh').value.trim(), category: $('#category').value.trim(), expiry: $('#expiry').value, status: $('#status').value || 'Ativo', phone: $('#phone')?.value||'', zip_code: $('#zip_code')?.value||'', address: ($('#address')?.value||'').toUpperCase(), number: $('#number')?.value||'', neighborhood: ($('#neighborhood')?.value||'').toUpperCase(), city: ($('#city')?.value||'').toUpperCase(), state: ($('#state')?.value||'').toUpperCase(), photo: window._pendingDriverPhoto || currentDriverPhoto || '' }; } if (id) data.id = id; const saved = await api(resource + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', body: JSON.stringify(data) }); if (resource === 'drivers' && window._pendingDriverPhoto) { const driverId = id || saved.id; try { await api(`drivers/${driverId}/photo`, { method: 'PUT', body: JSON.stringify({ photo: window._pendingDriverPhoto }) }); } catch(e) { console.warn('Foto não salva:', e.message); } } closeModal(); if (resource === 'clients') return showClients(); if (resource === 'suppliers') return showSuppliers(); const records = await api(resource); localStorage.setItem(resource === 'drivers' ? keys.drivers : keys.vehicles, JSON.stringify(records)); resource === 'drivers' ? renderDrivers() : renderVehicles(); } catch (error) { $('#record-error').textContent = error.message; } });
-async function showClients() { currentView = 'clients'; $('#drivers-view').classList.add('hidden'); $('#vehicles-view').classList.add('hidden'); $('#suppliers-view').classList.add('hidden'); $('#clients-view').classList.remove('hidden'); $('#page-title').textContent = 'Clientes'; $('#new-item-button').textContent = '+ Novo cliente'; document.querySelectorAll('[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === 'clients')); clientsData = await api('clients'); $('#clients-table').innerHTML = clientsData.map(c => `<tr><td class="driver-cell">${c.name}</td><td>${c.address}, ${c.number || 's/n'}</td><td>${c.city}/${c.state}</td><td>${c.phone || '-'}</td><td><button class="table-action" data-edit-client="${c.id}">Editar</button></td></tr>`).join(''); $('#clients-empty').classList.toggle('hidden', clientsData.length > 0); }
+function renderClients() {
+  const query = ($('#client-search')?.value || '').toLowerCase().trim();
+  const filter = $('#client-status-filter')?.value || 'Ativo';
+
+  const total = clientsData.length;
+  const activeCount = clientsData.filter(c => (c.status || 'Ativo') === 'Ativo').length;
+  const inactiveCount = clientsData.filter(c => c.status === 'Inativo').length;
+
+  if ($('#total-clients')) $('#total-clients').textContent = total;
+  if ($('#active-clients')) $('#active-clients').textContent = activeCount;
+  if ($('#inactive-clients')) $('#inactive-clients').textContent = inactiveCount;
+
+  const totalCard = $('#total-clients-card');
+  const activeCard = $('#active-clients-card');
+  const inactiveCard = $('#inactive-clients-card');
+  if (totalCard) { totalCard.style.outline = filter === 'Todos' ? '2.5px solid #1261a0' : 'none'; totalCard.style.outlineOffset = '2px'; }
+  if (activeCard) { activeCard.style.outline = filter === 'Ativo' ? '2.5px solid #16a34a' : 'none'; activeCard.style.outlineOffset = '2px'; }
+  if (inactiveCard) { inactiveCard.style.outline = filter === 'Inativo' ? '2.5px solid #64748b' : 'none'; inactiveCard.style.outlineOffset = '2px'; }
+
+  const filtered = clientsData.filter(c => {
+    const status = c.status || 'Ativo';
+    if (filter === 'Ativo' && status !== 'Ativo') return false;
+    if (filter === 'Inativo' && status !== 'Inativo') return false;
+
+    if (query) {
+      const matchText = `${c.name || ''} ${c.document || ''} ${c.city || ''} ${c.state || ''} ${c.address || ''} ${c.phone || ''}`.toLowerCase();
+      if (!matchText.includes(query)) return false;
+    }
+    return true;
+  });
+
+  const tableBody = $('#clients-table');
+  if (tableBody) {
+    tableBody.innerHTML = filtered.map(c => {
+      const freights = (clientFreightsData || []).filter(f => String(f.client_id) === String(c.id));
+      const freightCount = freights.length;
+      const totalFreightVal = freights.reduce((sum, f) => sum + (Number(f.freight) || 0), 0);
+      return `
+        <tr>
+          <td class="driver-cell client-cell-hover"
+              data-hover-client="${c.id}"
+              onmouseenter="window.showClientEntriesPopover(this, '${c.id}')"
+              onmouseleave="window.hideEntriesPopover()">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span class="entity-name">${c.name}</span>
+              ${freightCount > 0
+                ? `<span class="entries-badge has-entries" title="${freightCount} frete(s) • Total R$ ${formatMoney(totalFreightVal)}">🚚 ${freightCount} ${freightCount === 1 ? 'frete' : 'fretes'}</span>`
+                : `<span class="entries-badge no-entries">0 fretes</span>`
+              }
+            </div>
+          </td>
+          <td>${c.address || ''}${c.number ? ', ' + c.number : ''}</td>
+          <td>${c.city || ''}/${c.state || ''}</td>
+          <td>${c.phone || '-'}</td>
+          <td><span class="badge ${statusClass(c.status || 'Ativo')}">${c.status || 'Ativo'}</span></td>
+          <td><button class="table-action" data-edit-client="${c.id}">Editar</button></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  const emptyEl = $('#clients-empty');
+  if (emptyEl) {
+    if (total === 0) {
+      emptyEl.classList.remove('hidden');
+      const titleEl = $('#clients-empty-title');
+      const descEl = $('#clients-empty-desc');
+      if (titleEl) titleEl.textContent = 'Nenhum cliente cadastrado';
+      if (descEl) descEl.textContent = 'Adicione os destinos das entregas.';
+      emptyEl.querySelector('button')?.classList.remove('hidden');
+    } else if (filtered.length === 0) {
+      emptyEl.classList.remove('hidden');
+      const titleEl = $('#clients-empty-title');
+      const descEl = $('#clients-empty-desc');
+      if (filter === 'Inativo') {
+        if (titleEl) titleEl.textContent = 'Nenhum cliente inativo';
+        if (descEl) descEl.textContent = 'Não há clientes inativos no momento.';
+      } else if (filter === 'Ativo') {
+        if (titleEl) titleEl.textContent = 'Nenhum cliente ativo';
+        if (descEl) descEl.textContent = query ? 'Nenhum cliente ativo correspondente à busca.' : 'Não há clientes ativos no momento.';
+      } else {
+        if (titleEl) titleEl.textContent = 'Nenhum cliente encontrado';
+        if (descEl) descEl.textContent = 'Nenhum cliente corresponde aos critérios da busca.';
+      }
+      emptyEl.querySelector('button')?.classList.add('hidden');
+    } else {
+      emptyEl.classList.add('hidden');
+    }
+  }
+}
+
+window.filterClientsByStatus = function(status) {
+  const select = $('#client-status-filter');
+  if (select) {
+    select.value = status;
+    renderClients();
+  }
+};
+
+async function showClients() {
+  currentView = 'clients';
+  $('#drivers-view').classList.add('hidden');
+  $('#vehicles-view').classList.add('hidden');
+  $('#suppliers-view').classList.add('hidden');
+  $('#clients-view').classList.remove('hidden');
+  $('#page-title').textContent = 'Clientes';
+  $('#new-item-button').textContent = '+ Novo cliente';
+  document.querySelectorAll('[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === 'clients'));
+  try {
+    const [clients, freights] = await Promise.all([api('clients'), api('freight_entries')]);
+    clientsData = clients;
+    clientFreightsData = freights;
+  } catch (e) {
+    console.error('Erro ao carregar clientes/fretes:', e);
+    clientsData = await api('clients').catch(() => []);
+    clientFreightsData = [];
+  }
+  renderClients();
+}
 document.querySelector('[data-view="clients"]').addEventListener('click', event => { event.preventDefault(); showClients(); });
-async function showSuppliers() { currentView = 'suppliers'; $('#drivers-view').classList.add('hidden'); $('#vehicles-view').classList.add('hidden'); $('#clients-view').classList.add('hidden'); $('#suppliers-view').classList.remove('hidden'); $('#page-title').textContent = 'Fornecedores'; $('#new-item-button').textContent = '+ Novo fornecedor'; document.querySelectorAll('[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === 'suppliers')); suppliersData = await api('suppliers'); $('#suppliers-table').innerHTML = suppliersData.map(c => `<tr><td class="driver-cell">${c.name}</td><td>${c.trade_name || '-'}</td><td>${c.document || '-'}</td><td>${c.phone || '-'}</td><td><span class="badge" style="background:#eef1f4;color:#102a43">${c.supplier_type}</span></td><td><button class="table-action" data-edit-supplier="${c.id}">Editar</button></td></tr>`).join(''); $('#suppliers-empty').classList.toggle('hidden', suppliersData.length > 0); }
+function renderSuppliers() {
+  const query = ($('#supplier-search')?.value || '').toLowerCase().trim();
+  const filter = $('#supplier-status-filter')?.value || 'Ativo';
+
+  const total = suppliersData.length;
+  const activeCount = suppliersData.filter(s => (s.status || 'Ativo') === 'Ativo').length;
+  const inactiveCount = suppliersData.filter(s => s.status === 'Inativo').length;
+
+  if ($('#total-suppliers')) $('#total-suppliers').textContent = total;
+  if ($('#active-suppliers')) $('#active-suppliers').textContent = activeCount;
+  if ($('#inactive-suppliers')) $('#inactive-suppliers').textContent = inactiveCount;
+
+  const totalCard = $('#total-suppliers-card');
+  const activeCard = $('#active-suppliers-card');
+  const inactiveCard = $('#inactive-suppliers-card');
+  if (totalCard) { totalCard.style.outline = filter === 'Todos' ? '2.5px solid #1261a0' : 'none'; totalCard.style.outlineOffset = '2px'; }
+  if (activeCard) { activeCard.style.outline = filter === 'Ativo' ? '2.5px solid #16a34a' : 'none'; activeCard.style.outlineOffset = '2px'; }
+  if (inactiveCard) { inactiveCard.style.outline = filter === 'Inativo' ? '2.5px solid #64748b' : 'none'; inactiveCard.style.outlineOffset = '2px'; }
+
+  const filtered = suppliersData.filter(s => {
+    const status = s.status || 'Ativo';
+    if (filter === 'Ativo' && status !== 'Ativo') return false;
+    if (filter === 'Inativo' && status !== 'Inativo') return false;
+
+    if (query) {
+      const matchText = `${s.name || ''} ${s.trade_name || ''} ${s.document || ''} ${s.supplier_type || ''} ${s.city || ''} ${s.phone || ''}`.toLowerCase();
+      if (!matchText.includes(query)) return false;
+    }
+    return true;
+  });
+
+  const tableBody = $('#suppliers-table');
+  if (tableBody) {
+    tableBody.innerHTML = filtered.map(s => {
+      const maintenances = (supplierMaintenancesData || []).filter(m => String(m.supplier_id) === String(s.id));
+      const stock = (supplierStockData || []).filter(sm => String(sm.supplier_id) === String(s.id));
+      const totalEntries = maintenances.length + stock.length;
+      const totalSpent = maintenances.reduce((sum, m) => sum + (Number(m.cost) || 0), 0) + stock.reduce((sum, sm) => sum + (Number(sm.value) || 0), 0);
+      return `
+        <tr>
+          <td class="driver-cell supplier-cell-hover"
+              data-hover-supplier="${s.id}"
+              onmouseenter="window.showSupplierEntriesPopover(this, '${s.id}')"
+              onmouseleave="window.hideEntriesPopover()">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span class="entity-name">${s.name}</span>
+              ${totalEntries > 0
+                ? `<span class="entries-badge has-entries" title="${totalEntries} lançamento(s) • Total R$ ${formatMoney(totalSpent)}">🔧 ${totalEntries} ${totalEntries === 1 ? 'lançamento' : 'lançamentos'}</span>`
+                : `<span class="entries-badge no-entries">0 lançamentos</span>`
+              }
+            </div>
+          </td>
+          <td>${s.trade_name || '-'}</td>
+          <td>${s.document || '-'}</td>
+          <td>${s.phone || '-'}</td>
+          <td><span class="badge" style="background:#eef1f4;color:#102a43">${s.supplier_type || '-'}</span></td>
+          <td><span class="badge ${statusClass(s.status || 'Ativo')}">${s.status || 'Ativo'}</span></td>
+          <td><button class="table-action" data-edit-supplier="${s.id}">Editar</button></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  const emptyEl = $('#suppliers-empty');
+  if (emptyEl) {
+    if (total === 0) {
+      emptyEl.classList.remove('hidden');
+      const titleEl = $('#suppliers-empty-title');
+      const descEl = $('#suppliers-empty-desc');
+      if (titleEl) titleEl.textContent = 'Nenhum fornecedor cadastrado';
+      if (descEl) descEl.textContent = 'Adicione fornecedores de peças ou serviços.';
+      emptyEl.querySelector('button')?.classList.remove('hidden');
+    } else if (filtered.length === 0) {
+      emptyEl.classList.remove('hidden');
+      const titleEl = $('#suppliers-empty-title');
+      const descEl = $('#suppliers-empty-desc');
+      if (filter === 'Inativo') {
+        if (titleEl) titleEl.textContent = 'Nenhum fornecedor inativo';
+        if (descEl) descEl.textContent = 'Não há fornecedores inativos no momento.';
+      } else if (filter === 'Ativo') {
+        if (titleEl) titleEl.textContent = 'Nenhum fornecedor ativo';
+        if (descEl) descEl.textContent = query ? 'Nenhum fornecedor ativo correspondente à busca.' : 'Não há fornecedores ativos no momento.';
+      } else {
+        if (titleEl) titleEl.textContent = 'Nenhum fornecedor encontrado';
+        if (descEl) descEl.textContent = 'Nenhum fornecedor corresponde aos critérios da busca.';
+      }
+      emptyEl.querySelector('button')?.classList.add('hidden');
+    } else {
+      emptyEl.classList.add('hidden');
+    }
+  }
+}
+
+window.filterSuppliersByStatus = function(status) {
+  const select = $('#supplier-status-filter');
+  if (select) {
+    select.value = status;
+    renderSuppliers();
+  }
+};
+
+async function showSuppliers() {
+  currentView = 'suppliers';
+  $('#drivers-view').classList.add('hidden');
+  $('#vehicles-view').classList.add('hidden');
+  $('#clients-view').classList.add('hidden');
+  $('#suppliers-view').classList.remove('hidden');
+  $('#page-title').textContent = 'Fornecedores';
+  $('#new-item-button').textContent = '+ Novo fornecedor';
+  document.querySelectorAll('[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === 'suppliers'));
+  try {
+    const [suppliers, maintenances, stockMovements] = await Promise.all([
+      api('suppliers'),
+      api('maintenance_entries'),
+      api('stock_movements')
+    ]);
+    suppliersData = suppliers;
+    supplierMaintenancesData = maintenances;
+    supplierStockData = stockMovements;
+  } catch (e) {
+    console.error('Erro ao carregar fornecedores/lançamentos:', e);
+    suppliersData = await api('suppliers').catch(() => []);
+    supplierMaintenancesData = [];
+    supplierStockData = [];
+  }
+  renderSuppliers();
+}
 document.querySelector('[data-view="suppliers"]').addEventListener('click', event => { event.preventDefault(); showSuppliers(); });
 $('#sidebar-toggle').addEventListener('click', () => $('#sidebar').classList.toggle('collapsed')); $('#mobile-menu').addEventListener('click', () => $('#sidebar').classList.toggle('open')); renderAuth(); showApp();
 
-// ── Hover effects nos cards clicáveis de motoristas ─────────────────────────
+// ── Hover effects nos cards clicáveis de cadastros ───────────────
 (function addCardHoverEffects() {
   const cards = [
-    { id: 'total-drivers-card',   color: 'rgba(18,97,160,0.08)' },
-    { id: 'active-drivers-card',  color: 'rgba(22,163,74,0.08)' },
-    { id: 'pending-drivers-card', color: 'rgba(217,119,6,0.08)' },
-    { id: 'expiring-cnh-card',    color: 'rgba(255,179,0,0.12)' }
+    { id: 'total-drivers-card',        color: 'rgba(18,97,160,0.08)' },
+    { id: 'active-drivers-card',       color: 'rgba(22,163,74,0.08)' },
+    { id: 'inactive-drivers-card',     color: 'rgba(100,116,139,0.08)' },
+    { id: 'pending-drivers-card',      color: 'rgba(217,119,6,0.08)' },
+    { id: 'expiring-cnh-card',         color: 'rgba(255,179,0,0.12)' },
+    { id: 'total-vehicles-card',       color: 'rgba(18,97,160,0.08)' },
+    { id: 'active-vehicles-card',      color: 'rgba(22,163,74,0.08)' },
+    { id: 'maintenance-vehicles-card', color: 'rgba(217,119,6,0.08)' },
+    { id: 'inactive-vehicles-card',    color: 'rgba(100,116,139,0.08)' },
+    { id: 'total-clients-card',        color: 'rgba(18,97,160,0.08)' },
+    { id: 'active-clients-card',       color: 'rgba(22,163,74,0.08)' },
+    { id: 'inactive-clients-card',     color: 'rgba(100,116,139,0.08)' },
+    { id: 'total-suppliers-card',      color: 'rgba(18,97,160,0.08)' },
+    { id: 'active-suppliers-card',     color: 'rgba(22,163,74,0.08)' },
+    { id: 'inactive-suppliers-card',   color: 'rgba(100,116,139,0.08)' }
   ];
   cards.forEach(({ id, color }) => {
     const el = document.getElementById(id);
@@ -321,60 +778,6 @@ $('#sidebar-toggle').addEventListener('click', () => $('#sidebar').classList.tog
   });
 })();
 
-// ── Hover effects nos cards clicáveis de motoristas ─────────────────────────
-(function addCardHoverEffects() {
-  const cards = [
-    { id: 'total-drivers-card',   color: 'rgba(18,97,160,0.08)' },
-    { id: 'active-drivers-card',  color: 'rgba(22,163,74,0.08)' },
-    { id: 'pending-drivers-card', color: 'rgba(217,119,6,0.08)' },
-    { id: 'expiring-cnh-card',    color: 'rgba(255,179,0,0.12)' }
-  ];
-  cards.forEach(({ id, color }) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.style.transition = 'transform .15s, box-shadow .15s';
-    el.addEventListener('mouseenter', () => { el.style.transform = 'translateY(-3px)'; el.style.boxShadow = `0 6px 18px ${color}`; });
-    el.addEventListener('mouseleave', () => { el.style.transform = ''; el.style.boxShadow = ''; });
-  });
-})();
-
-// ── Photo Lightbox ──────────────────────────────────────────────────────────
-(function initPhotoLightbox() {
-  const lb = document.createElement('div');
-  lb.id = 'photo-lightbox';
-  lb.innerHTML = `
-    <div id="photo-lightbox-inner">
-      <img id="photo-lightbox-img" src="" alt="Foto do motorista" />
-      <p id="photo-lightbox-name"></p>
-      <button id="photo-lightbox-close" aria-label="Fechar">&times;</button>
-    </div>`;
-  lb.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);align-items:center;justify-content:center;cursor:zoom-out;';
-  document.getElementById('photo-lightbox-inner') && document.body.removeChild(document.getElementById('photo-lightbox'));
-  document.body.appendChild(lb);
-  const style = document.createElement('style');
-  style.textContent = `
-    #photo-lightbox { display:none; }
-    #photo-lightbox.lb-open { display:flex !important; animation: lbFadeIn .2s ease; }
-    @keyframes lbFadeIn { from{opacity:0} to{opacity:1} }
-    #photo-lightbox-inner { position:relative; display:flex; flex-direction:column; align-items:center; gap:14px; }
-    #photo-lightbox-img { max-width:min(420px,90vw); max-height:80vh; border-radius:16px; object-fit:contain; box-shadow:0 24px 64px rgba(0,0,0,.6); border:3px solid rgba(255,255,255,.15); animation:lbImgIn .25s cubic-bezier(.34,1.56,.64,1); }
-    @keyframes lbImgIn { from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
-    #photo-lightbox-name { color:#fff; font-size:16px; font-weight:600; letter-spacing:.01em; text-shadow:0 2px 8px rgba(0,0,0,.5); margin:0; }
-    #photo-lightbox-close { position:absolute; top:-44px; right:-4px; background:rgba(255,255,255,.15); border:none; color:#fff; width:36px; height:36px; border-radius:50%; font-size:22px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s; }
-    #photo-lightbox-close:hover { background:rgba(255,255,255,.3); }`;
-  document.head.appendChild(style);
-  function openLightbox(photoSrc, driverName) { document.getElementById('photo-lightbox-img').src = photoSrc; document.getElementById('photo-lightbox-name').textContent = driverName; lb.classList.add('lb-open'); document.body.style.overflow = 'hidden'; }
-  function closeLightbox() { lb.classList.remove('lb-open'); document.body.style.overflow = ''; }
-  lb.addEventListener('click', closeLightbox);
-  document.getElementById('photo-lightbox-close').addEventListener('click', closeLightbox);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
-  document.addEventListener('click', e => {
-    const photoId = e.target.dataset.photoView;
-    if (!photoId) return;
-    const driver = get(keys.drivers).find(d => String(d.id) === String(photoId));
-    if (driver && driver.photo) openLightbox(driver.photo, driver.name);
-  });
-})();
 
 fetch('/api/db-status').then(function(r){return r.json();}).then(function(data){
   var e=document.querySelector('#db-status');
@@ -406,4 +809,271 @@ fetch('/api/db-status').then(function(r){return r.json();}).then(function(data){
     aboutModal.addEventListener('click', e => { if (e.target === aboutModal) aboutModal.classList.add('hidden'); });
   }
 })();
+
+// ── Popover de Lançamentos para Clientes e Fornecedores ao passar o mouse ──────────
+function buildClientPopoverHtml(c, freights) {
+  const totalFreightVal = freights.reduce((sum, f) => sum + (Number(f.freight) || 0), 0);
+  const totalTolls = freights.reduce((sum, f) => sum + (Number(f.tolls) || 0), 0);
+
+  return `
+    <div class="popover-header">
+      <div class="popover-title-row">
+        <span class="popover-type-tag">🏢 Cliente</span>
+        <span class="badge ${statusClass(c.status || 'Ativo')}">${c.status || 'Ativo'}</span>
+      </div>
+      <h3 class="popover-name">${c.name}</h3>
+      <div class="popover-meta">
+        ${c.document ? `<span>📄 ${formatCnpjCpf(c.document)}</span>` : ''}
+        ${c.city ? `<span>📍 ${c.city}/${c.state || ''}</span>` : ''}
+        ${c.phone ? `<span>📞 ${c.phone}</span>` : ''}
+      </div>
+    </div>
+
+    <div class="popover-kpi-bar">
+      <div class="popover-kpi-item">
+        <span class="popover-kpi-label">Total de Fretes</span>
+        <span class="popover-kpi-val highlight-blue">${freights.length}</span>
+      </div>
+      <div class="popover-kpi-item">
+        <span class="popover-kpi-label">Faturamento</span>
+        <span class="popover-kpi-val highlight-green">R$ ${formatMoney(totalFreightVal)}</span>
+      </div>
+      <div class="popover-kpi-item">
+        <span class="popover-kpi-label">Pedágios</span>
+        <span class="popover-kpi-val highlight-orange">R$ ${formatMoney(totalTolls)}</span>
+      </div>
+    </div>
+
+    <div class="popover-body">
+      <div class="popover-section-header">
+        <span>📋 Lançamentos de Frete Recentes</span>
+        <small>${freights.length} registro(s)</small>
+      </div>
+      ${freights.length === 0 ? `
+        <div class="popover-empty">
+          <span>📦</span>
+          <strong>Nenhum frete registrado</strong>
+          <small>Ainda não há lançamentos de frete vinculados a este cliente.</small>
+        </div>
+      ` : `
+        <div class="popover-list">
+          ${freights.slice(0, 6).map(f => `
+            <div class="popover-entry-item">
+              <div class="popover-entry-top">
+                <span class="popover-entry-date">📅 ${formatDate(f.date)}</span>
+                <span class="popover-entry-val">R$ ${formatMoney(f.freight)}</span>
+              </div>
+              <div class="popover-entry-detail">
+                <span><strong>Destino:</strong> ${f.destination || '-'}</span>
+                <span><strong>Placa:</strong> ${f.plate || '-'}</span>
+                <span><strong>Motorista:</strong> ${f.driver_name || '-'}</span>
+              </div>
+            </div>
+          `).join('')}
+          ${freights.length > 6 ? `<div class="popover-more-note">+ ${freights.length - 6} outro(s) frete(s) registrado(s)</div>` : ''}
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function buildSupplierPopoverHtml(s, maintenances, stock) {
+  const totalMaintCost = maintenances.reduce((sum, m) => sum + (Number(m.cost) || 0), 0);
+  const totalStockVal = stock.reduce((sum, sm) => sum + (Number(sm.value) || 0), 0);
+  const totalSpent = totalMaintCost + totalStockVal;
+  const totalEntries = maintenances.length + stock.length;
+
+  return `
+    <div class="popover-header">
+      <div class="popover-title-row">
+        <span class="popover-type-tag supplier-tag">🏭 Fornecedor</span>
+        <span class="badge ${statusClass(s.status || 'Ativo')}">${s.status || 'Ativo'}</span>
+      </div>
+      <h3 class="popover-name">${s.name}</h3>
+      ${s.trade_name ? `<p class="popover-subname">${s.trade_name}</p>` : ''}
+      <div class="popover-meta">
+        ${s.document ? `<span>📄 ${formatCnpjCpf(s.document)}</span>` : ''}
+        <span>🏷️ ${s.supplier_type || 'Peças/Serviços'}</span>
+        ${s.phone ? `<span>📞 ${s.phone}</span>` : ''}
+      </div>
+    </div>
+
+    <div class="popover-kpi-bar">
+      <div class="popover-kpi-item">
+        <span class="popover-kpi-label">Manutenções</span>
+        <span class="popover-kpi-val highlight-blue">${maintenances.length} (R$ ${formatMoney(totalMaintCost)})</span>
+      </div>
+      <div class="popover-kpi-item">
+        <span class="popover-kpi-label">Compras Peças</span>
+        <span class="popover-kpi-val highlight-orange">${stock.length} (R$ ${formatMoney(totalStockVal)})</span>
+      </div>
+      <div class="popover-kpi-item">
+        <span class="popover-kpi-label">Total Gasto</span>
+        <span class="popover-kpi-val highlight-green">R$ ${formatMoney(totalSpent)}</span>
+      </div>
+    </div>
+
+    <div class="popover-body">
+      ${totalEntries === 0 ? `
+        <div class="popover-empty">
+          <span>🔧</span>
+          <strong>Nenhum lançamento registrado</strong>
+          <small>Nenhuma manutenção ou compra de peças vinculada a este fornecedor.</small>
+        </div>
+      ` : `
+        ${maintenances.length > 0 ? `
+          <div class="popover-section-header">
+            <span>🔧 Manutenções (${maintenances.length})</span>
+          </div>
+          <div class="popover-list">
+            ${maintenances.slice(0, 4).map(m => `
+              <div class="popover-entry-item">
+                <div class="popover-entry-top">
+                  <span class="popover-entry-date">📅 ${formatDate(m.entry_date)} • ${m.maintenance_type || 'Manutenção'}</span>
+                  <span class="popover-entry-val">R$ ${formatMoney(m.cost)}</span>
+                </div>
+                <div class="popover-entry-detail">
+                  <span><strong>Veículo:</strong> ${m.plate || '-'} ${m.model ? '(' + m.model + ')' : ''}</span>
+                  <span><strong>Tipo:</strong> ${m.category || '-'}</span>
+                  <span class="badge ${m.status === 'Concluído' ? 'active' : 'pending'}" style="font-size:10px;padding:1px 6px;">${m.status || 'Em andamento'}</span>
+                </div>
+              </div>
+            `).join('')}
+            ${maintenances.length > 4 ? `<div class="popover-more-note">+ ${maintenances.length - 4} outra(s) manutenção(ões)</div>` : ''}
+          </div>
+        ` : ''}
+
+        ${stock.length > 0 ? `
+          <div class="popover-section-header" style="${maintenances.length > 0 ? 'margin-top:14px;' : ''}">
+            <span>📦 Compras / Peças em Estoque (${stock.length})</span>
+          </div>
+          <div class="popover-list">
+            ${stock.slice(0, 3).map(sm => `
+              <div class="popover-entry-item">
+                <div class="popover-entry-top">
+                  <span class="popover-entry-date">📅 ${formatDate(sm.date)} • ${sm.material_name || 'Material'}</span>
+                  <span class="popover-entry-val">${sm.value ? 'R$ ' + formatMoney(sm.value) : '-'}</span>
+                </div>
+                <div class="popover-entry-detail">
+                  <span><strong>Qtd:</strong> ${sm.quantity}</span>
+                  ${sm.invoice_number ? `<span><strong>NF:</strong> ${sm.invoice_number}</span>` : ''}
+                  ${sm.vehicle_plate ? `<span><strong>Veículo:</strong> ${sm.vehicle_plate}</span>` : ''}
+                </div>
+              </div>
+            `).join('')}
+            ${stock.length > 3 ? `<div class="popover-more-note">+ ${stock.length - 3} outra(s) compra(s)</div>` : ''}
+          </div>
+        ` : ''}
+      `}
+    </div>
+  `;
+}
+
+(function initEntriesPopover() {
+  let popover = document.getElementById('entries-popover');
+  if (!popover) {
+    popover = document.createElement('div');
+    popover.id = 'entries-popover';
+    document.body.appendChild(popover);
+  }
+
+  let hideTimeout = null;
+  let showTimeout = null;
+  let currentTargetEl = null;
+
+  function showPopover(targetEl, html) {
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      hideTimeout = null;
+    }
+    currentTargetEl = targetEl;
+    popover.innerHTML = html;
+    popover.classList.add('visible');
+    positionPopover(targetEl);
+  }
+
+  function positionPopover(targetEl) {
+    const rect = targetEl.getBoundingClientRect();
+    const popWidth = Math.min(450, window.innerWidth - 30);
+    const popHeight = popover.offsetHeight || 320;
+
+    let left = rect.right + 12;
+    let top = rect.top - 8;
+
+    if (left + popWidth > window.innerWidth - 15) {
+      left = rect.left - popWidth - 12;
+      if (left < 15) {
+        left = Math.max(15, rect.left);
+        top = rect.bottom + 10;
+      }
+    }
+
+    if (top + popHeight > window.innerHeight - 15) {
+      top = Math.max(15, window.innerHeight - popHeight - 15);
+    }
+    if (top < 15) {
+      top = 15;
+    }
+
+    popover.style.left = `${Math.round(left)}px`;
+    popover.style.top = `${Math.round(top)}px`;
+  }
+
+  function scheduleHide() {
+    if (showTimeout) {
+      clearTimeout(showTimeout);
+      showTimeout = null;
+    }
+    if (hideTimeout) clearTimeout(hideTimeout);
+    hideTimeout = setTimeout(() => {
+      popover.classList.remove('visible');
+      currentTargetEl = null;
+    }, 220);
+  }
+
+  popover.addEventListener('mouseenter', () => {
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      hideTimeout = null;
+    }
+  });
+
+  popover.addEventListener('mouseleave', () => {
+    scheduleHide();
+  });
+
+  window.showClientEntriesPopover = function(el, clientId) {
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      hideTimeout = null;
+    }
+    if (showTimeout) clearTimeout(showTimeout);
+    showTimeout = setTimeout(() => {
+      const client = (clientsData || []).find(c => String(c.id) === String(clientId));
+      if (!client) return;
+      const freights = (clientFreightsData || []).filter(f => String(f.client_id) === String(clientId));
+      const html = buildClientPopoverHtml(client, freights);
+      showPopover(el, html);
+    }, 120);
+  };
+
+  window.showSupplierEntriesPopover = function(el, supplierId) {
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      hideTimeout = null;
+    }
+    if (showTimeout) clearTimeout(showTimeout);
+    showTimeout = setTimeout(() => {
+      const supplier = (suppliersData || []).find(s => String(s.id) === String(supplierId));
+      if (!supplier) return;
+      const maintenances = (supplierMaintenancesData || []).filter(m => String(m.supplier_id) === String(supplierId));
+      const stock = (supplierStockData || []).filter(sm => String(sm.supplier_id) === String(supplierId));
+      const html = buildSupplierPopoverHtml(supplier, maintenances, stock);
+      showPopover(el, html);
+    }, 120);
+  };
+
+  window.hideEntriesPopover = scheduleHide;
+})();
+
 

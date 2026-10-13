@@ -1,120 +1,349 @@
-<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Usuários</title><link rel="stylesheet" href="styles.css">
-<style>
-body{background:#f6f8fb}
-.topbar{position:sticky;top:0;z-index:1000;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 36px;display:flex;justify-content:flex-start;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.topbar a{display:inline-flex;align-items:center;text-decoration:none;padding:9px 14px;border-radius:7px;font-weight:700;background:#eef2f6;color:#1f2937}
-.page{padding:36px;width:100%;box-sizing:border-box}
-.badge{font-size:11px;font-weight:700;border-radius:999px;padding:4px 10px;display:inline-block}
-.badge.approved{color:#187444;background:#e9f8ef}
-.badge.pending{color:#a15d00;background:#fff3db}
-.badge.inactive{color:#667085;background:#eef0f3}
-.actions{display:flex;gap:6px}
-.actions button{border:0;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer}
-.btn-approve{background:#e9f8ef;color:#187444}
-.btn-approve:hover{background:#c6f0d9}
-.btn-inactivate{background:#fff3db;color:#a15d00}
-.btn-inactivate:hover{background:#fde8b3}
-.btn-reactivate{background:#eef0f3;color:#1f2937}
-.btn-reactivate:hover{background:#d6dbe2}
-#msg{min-height:20px;font-weight:700;margin-top:10px;font-size:13px}
-</style>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usuários | NJTransportes</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background: #f6f8fb; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 14px 36px;
+      display: flex;
+      justify-content: flex-start;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .topbar a {
+      display: inline-flex;
+      align-items: center;
+      text-decoration: none;
+      padding: 9px 14px;
+      border-radius: 7px;
+      font-weight: 700;
+      background: #eef2f6;
+      color: #1f2937;
+      transition: background .15s;
+    }
+    .topbar a:hover { background: #e2e8f0; }
+    .page { padding: 36px; width: 100%; box-sizing: border-box; }
+    .card { max-width: none; }
+    .badge { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 4px 10px; display: inline-block; }
+    .badge.active, .badge.approved { color: #187444; background: #e9f8ef; }
+    .badge.pending { color: #a15d00; background: #fff3db; }
+    .badge.inactive { color: #667085; background: #eef0f3; }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .actions button { border: 0; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .15s; }
+    .btn-approve { background: #e9f8ef; color: #187444; }
+    .btn-approve:hover { background: #c6f0d9; }
+    .btn-inactivate { background: #fff3db; color: #a15d00; }
+    .btn-inactivate:hover { background: #fde8b3; }
+    .btn-reactivate { background: #eef0f3; color: #1f2937; }
+    .btn-reactivate:hover { background: #d6dbe2; }
+    #msg { min-height: 20px; font-weight: 700; margin: 10px 0 16px; font-size: 13px; }
+    .table-wrap { overflow-x: auto; margin-top: 14px; }
+    @media(max-width: 768px) {
+      .page { padding: 20px 16px; }
+      .topbar { padding: 10px 16px; }
+    }
+  </style>
+</head>
 <body>
-<nav class="topbar"><a href="index.html">&larr; Voltar para a página inicial</a></nav>
-<main class="page">
-  <p class="eyebrow">ADMINISTRAÇÃO</p>
-  <h2>Gerenciamento de Usuários</h2>
-  <p style="color:#64748b;font-size:14px;margin-bottom:20px">Aprovação, ativação e inativação de contas de acesso ao sistema.</p>
-  <p id="msg"></p>
-  <div class="card">
-    <table>
-      <thead><tr><th>Nome</th><th>E-mail</th><th>Nível de Acesso</th><th>Cadastrado em</th><th>Status</th><th>Ações</th></tr></thead>
-      <tbody id="r"></tbody>
-    </table>
-  </div>
-</main>
-<script>
-const q=s=>document.querySelector(s);
-function showMsg(txt,err=false){q('#msg').textContent=txt;q('#msg').style.color=err?'#b42318':'#187444';}
-function fmtDate(v){const s=String(v||'').slice(0,10);if(!s)return'-';const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;}
-async function load(){
-  const users=await fetch('/api/users').then(r=>r.json());
-  q('#r').innerHTML=users.map(x=>{
-    let badge,actions='';
-    if(!x.approved){
-      badge='<span class="badge pending">Pendente</span>';
-      actions=`<button class="btn-approve" onclick="approve('${x.id}')">✓ Aprovar</button>`;
-    } else if(x.active===false){
-      badge='<span class="badge inactive">Inativo</span>';
-      actions=`<button class="btn-reactivate" onclick="reactivate('${x.id}')">↩ Reativar</button>`;
-    } else {
-      badge='<span class="badge approved">Ativo</span>';
-      actions=`<button class="btn-inactivate" onclick="inactivate('${x.id}')">⊘ Inativar</button>`;
+  <nav class="topbar">
+    <a href="index.html">&larr; Voltar para a página inicial</a>
+  </nav>
+
+  <main class="page">
+    <p class="eyebrow">ADMINISTRAÇÃO</p>
+    <h1 style="margin: 0 0 8px; font-size: 26px; color: var(--navy);">Gerenciamento de Usuários</h1>
+    <p style="color: #64748b; font-size: 14px; margin-bottom: 24px;">Aprovação, controle de nível de acesso, ativação e inativação de contas.</p>
+
+    <!-- Stats Cards -->
+    <section class="stats" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 25px;">
+      <article class="clickable-card" id="total-users-card" style="cursor:pointer;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-left:4px solid #1261a0;transition:transform .15s,box-shadow .15s;" onclick="filterUsersByStatus('Todos')" title="Ver todos os usuários">
+        <span>Total de usuários</span>
+        <strong id="total-users" style="color:#1261a0;">0</strong>
+      </article>
+      <article class="clickable-card" id="active-users-card" style="cursor:pointer;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-left:4px solid #16a34a;transition:transform .15s,box-shadow .15s;" onclick="filterUsersByStatus('Ativo')" title="Ver apenas usuários ativos">
+        <span>Usuários ativos</span>
+        <strong id="active-users" style="color:#15803d;">0</strong>
+      </article>
+      <article class="clickable-card" id="inactive-users-card" style="cursor:pointer;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-left:4px solid #64748b;transition:transform .15s,box-shadow .15s;" onclick="filterUsersByStatus('Inativo')" title="Ver usuários inativos">
+        <span>Usuários inativos</span>
+        <strong id="inactive-users" style="color:#475569;">0</strong>
+      </article>
+      <article class="clickable-card" id="pending-users-card" style="cursor:pointer;background:linear-gradient(135deg,#fffbeb,#fef3c7);border-left:4px solid #d97706;transition:transform .15s,box-shadow .15s;" onclick="filterUsersByStatus('Pendente')" title="Ver cadastros pendentes de aprovação">
+        <span>Pendentes de aprovação</span>
+        <strong id="pending-users" style="color:#b45309;">0</strong>
+      </article>
+    </section>
+
+    <p id="msg"></p>
+
+    <!-- Table Section -->
+    <section class="card" style="padding: 24px;">
+      <div class="card-header" style="padding: 0 0 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; gap: 16px;">
+        <div>
+          <h2 style="font-size: 18px; margin: 0;">Usuários do Sistema</h2>
+          <p style="margin: 4px 0 0; color: var(--muted); font-size: 13px;">Controle de credenciais e permissões operacionais.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <label class="search-field" style="margin:0;">🔍 
+            <input id="user-search" type="search" placeholder="Buscar por nome, e-mail ou perfil" />
+          </label>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <label for="user-status-filter" style="font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;margin:0;">Status:</label>
+            <select id="user-status-filter" aria-label="Filtrar por status" style="padding:10px 14px;border:1px solid #d6dbe2;border-radius:8px;font-weight:600;font-size:13px;color:var(--ink);background:#fff;cursor:pointer;">
+              <option value="Ativo" selected>Apenas Ativos</option>
+              <option value="Inativo">Apenas Inativos</option>
+              <option value="Pendente">Pendentes de Aprovação</option>
+              <option value="Todos">Todos os Usuários</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Nível de Acesso</th>
+              <th>Cadastrado em</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="r"></tbody>
+        </table>
+      </div>
+
+      <div id="empty-state" class="empty-state hidden">
+        <div>👥</div>
+        <h3 id="empty-title">Nenhum usuário encontrado</h3>
+        <p id="empty-desc">Nenhum usuário corresponde aos critérios da busca.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const q = s => document.querySelector(s);
+    let usersData = [];
+
+    function showMsg(txt, err = false) {
+      const el = q('#msg');
+      if (!el) return;
+      el.textContent = txt;
+      el.style.color = err ? '#b42318' : '#187444';
+      setTimeout(() => { if (el.textContent === txt) el.textContent = ''; }, 6000);
     }
-    if (x.has_pending_password) {
-      badge += '<br><span class="badge pending" style="margin-top:4px">Senha pendente</span>';
-      actions += ` <button class="btn-approve" onclick="approvePassword('${x.id}')">✓ Aprovar Senha</button> <button class="btn-inactivate" onclick="rejectPassword('${x.id}')">⊘ Recusar Senha</button>`;
+
+    function fmtDate(v) {
+      const s = String(v || '').slice(0, 10);
+      if (!s) return '-';
+      const [y, m, d] = s.split('-');
+      return `${d}/${m}/${y}`;
     }
-    return `<tr>
-      <td style="font-weight:600">${x.name}</td>
-      <td>${x.email}</td>
-      <td>
-        <select onchange="changeRole('${x.id}', this.value)" style="padding:4px; border-radius:4px; border:1px solid #ccc; font-size:12px; background:#fff; color:#1f2937;">
-          <option value="Operador" ${x.role==='Operador'?'selected':''}>Operador</option>
-          <option value="Supervisor" ${x.role==='Supervisor'?'selected':''}>Supervisor</option>
-          <option value="Administrador" ${x.role==='Administrador'?'selected':''}>Administrador</option>
-        </select>
-      </td>
-      <td>${fmtDate(x.created_at)}</td>
-      <td>${badge}</td>
-      <td class="actions">${actions}</td>
-    </tr>`;
-  }).join('');
-}
-async function approve(id){
-  await fetch('/api/users/'+id+'/approve',{method:'PUT'});
-  showMsg('Usuário aprovado com sucesso.');
-  load();
-}
-async function inactivate(id){
-  if(!await confirm('Tem certeza que deseja inativar este usuário? Ele não poderá mais acessar o sistema.')) return;
-  await fetch('/api/users/'+id+'/inactivate',{method:'PUT'});
-  showMsg('Usuário inativado. O acesso foi bloqueado.');
-  load();
-}
-async function reactivate(id){
-  await fetch('/api/users/'+id+'/reactivate',{method:'PUT'});
-  showMsg('Usuário reativado com sucesso.');
-  load();
-}
-async function approvePassword(id){
-  await fetch('/api/users/'+id+'/approve-password',{method:'PUT'});
-  showMsg('Nova senha aprovada com sucesso.');
-  load();
-}
-async function rejectPassword(id){
-  if(!await confirm('Tem certeza que deseja recusar a nova senha solicitada?')) return;
-  await fetch('/api/users/'+id+'/reject-password',{method:'PUT'});
-  showMsg('Solicitação de nova senha recusada.');
-  load();
-}
-async function changeRole(id, role){
-  try {
-    const res = await fetch('/api/users/'+id+'/role',{
-      method:'PUT',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({role})
-    });
-    if (!res.ok) throw new Error('Falha ao atualizar nível de acesso.');
-    showMsg('Nível de acesso atualizado com sucesso.');
-  } catch (err) {
-    showMsg(err.message, true);
+
+    function getUserStatus(x) {
+      if (!x.approved) return 'Pendente';
+      if (x.active === false) return 'Inativo';
+      return 'Ativo';
+    }
+
+    async function load() {
+      try {
+        usersData = await fetch('/api/users').then(r => r.json());
+        renderUsers();
+      } catch (err) {
+        showMsg('Erro ao carregar lista de usuários.', true);
+      }
+    }
+
+    function renderUsers() {
+      const query = (q('#user-search')?.value || '').toLowerCase().trim();
+      const filter = q('#user-status-filter')?.value || 'Ativo';
+
+      const total = usersData.length;
+      const activeCount = usersData.filter(x => getUserStatus(x) === 'Ativo').length;
+      const inactiveCount = usersData.filter(x => getUserStatus(x) === 'Inativo').length;
+      const pendingCount = usersData.filter(x => getUserStatus(x) === 'Pendente').length;
+
+      if (q('#total-users')) q('#total-users').textContent = total;
+      if (q('#active-users')) q('#active-users').textContent = activeCount;
+      if (q('#inactive-users')) q('#inactive-users').textContent = inactiveCount;
+      if (q('#pending-users')) q('#pending-users').textContent = pendingCount;
+
+      const totalCard = q('#total-users-card');
+      const activeCard = q('#active-users-card');
+      const inactiveCard = q('#inactive-users-card');
+      const pendingCard = q('#pending-users-card');
+      if (totalCard) { totalCard.style.outline = filter === 'Todos' ? '2.5px solid #1261a0' : 'none'; totalCard.style.outlineOffset = '2px'; }
+      if (activeCard) { activeCard.style.outline = filter === 'Ativo' ? '2.5px solid #16a34a' : 'none'; activeCard.style.outlineOffset = '2px'; }
+      if (inactiveCard) { inactiveCard.style.outline = filter === 'Inativo' ? '2.5px solid #64748b' : 'none'; inactiveCard.style.outlineOffset = '2px'; }
+      if (pendingCard) { pendingCard.style.outline = filter === 'Pendente' ? '2.5px solid #d97706' : 'none'; pendingCard.style.outlineOffset = '2px'; }
+
+      const filtered = usersData.filter(x => {
+        const st = getUserStatus(x);
+        if (filter === 'Ativo' && st !== 'Ativo') return false;
+        if (filter === 'Inativo' && st !== 'Inativo') return false;
+        if (filter === 'Pendente' && st !== 'Pendente') return false;
+
+        if (query) {
+          const match = `${x.name || ''} ${x.email || ''} ${x.role || ''}`.toLowerCase();
+          if (!match.includes(query)) return false;
+        }
+        return true;
+      });
+
+      const tbody = q('#r');
+      if (tbody) {
+        tbody.innerHTML = filtered.map(x => {
+          let badge, actions = '';
+          const st = getUserStatus(x);
+
+          if (st === 'Pendente') {
+            badge = '<span class="badge pending">Pendente</span>';
+            actions = `<button class="btn-approve" onclick="approve('${x.id}')">✓ Aprovar</button>`;
+          } else if (st === 'Inativo') {
+            badge = '<span class="badge inactive">Inativo</span>';
+            actions = `<button class="btn-reactivate" onclick="reactivate('${x.id}')">↩ Reativar</button>`;
+          } else {
+            badge = '<span class="badge active">Ativo</span>';
+            actions = `<button class="btn-inactivate" onclick="inactivate('${x.id}')">⊘ Inativar</button>`;
+          }
+
+          if (x.has_pending_password) {
+            badge += '<br><span class="badge pending" style="margin-top:4px">Senha pendente</span>';
+            actions += ` <button class="btn-approve" onclick="approvePassword('${x.id}')">✓ Aprovar Senha</button> <button class="btn-inactivate" onclick="rejectPassword('${x.id}')">⊘ Recusar Senha</button>`;
+          }
+
+          return `<tr>
+            <td style="font-weight:600">${x.name}</td>
+            <td>${x.email}</td>
+            <td>
+              <select onchange="changeRole('${x.id}', this.value)" style="padding:4px; border-radius:4px; border:1px solid #ccc; font-size:12px; background:#fff; color:#1f2937; cursor:pointer;">
+                <option value="Operador" ${x.role === 'Operador' ? 'selected' : ''}>Operador</option>
+                <option value="Supervisor" ${x.role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
+                <option value="Administrador" ${x.role === 'Administrador' ? 'selected' : ''}>Administrador</option>
+              </select>
+            </td>
+            <td>${fmtDate(x.created_at)}</td>
+            <td>${badge}</td>
+            <td class="actions">${actions}</td>
+          </tr>`;
+        }).join('');
+      }
+
+      const emptyEl = q('#empty-state');
+      if (emptyEl) {
+        if (total === 0) {
+          emptyEl.classList.remove('hidden');
+          q('#empty-title').textContent = 'Nenhum usuário cadastrado';
+          q('#empty-desc').textContent = 'Não há usuários cadastrados no sistema.';
+        } else if (filtered.length === 0) {
+          emptyEl.classList.remove('hidden');
+          if (filter === 'Inativo') {
+            q('#empty-title').textContent = 'Nenhum usuário inativo';
+            q('#empty-desc').textContent = 'Não há usuários inativos no momento.';
+          } else if (filter === 'Pendente') {
+            q('#empty-title').textContent = 'Nenhum usuário pendente';
+            q('#empty-desc').textContent = 'Não há cadastros pendentes de aprovação no momento.';
+          } else if (filter === 'Ativo') {
+            q('#empty-title').textContent = 'Nenhum usuário ativo';
+            q('#empty-desc').textContent = query ? 'Nenhum usuário ativo correspondente à busca.' : 'Não há usuários ativos no momento.';
+          } else {
+            q('#empty-title').textContent = 'Nenhum usuário encontrado';
+            q('#empty-desc').textContent = 'Nenhum usuário corresponde aos critérios da busca.';
+          }
+        } else {
+          emptyEl.classList.add('hidden');
+        }
+      }
+    }
+
+    window.filterUsersByStatus = function(status) {
+      const select = q('#user-status-filter');
+      if (select) {
+        select.value = status;
+        renderUsers();
+      }
+    };
+
+    q('#user-search')?.addEventListener('input', renderUsers);
+    q('#user-status-filter')?.addEventListener('change', renderUsers);
+
+    async function approve(id) {
+      await fetch('/api/users/' + id + '/approve', { method: 'PUT' });
+      showMsg('Usuário aprovado com sucesso.');
+      load();
+    }
+
+    async function inactivate(id) {
+      if (!await confirm('Tem certeza que deseja inativar este usuário? Ele não poderá mais acessar o sistema.')) return;
+      await fetch('/api/users/' + id + '/inactivate', { method: 'PUT' });
+      showMsg('Usuário inativado. O acesso foi bloqueado.');
+      load();
+    }
+
+    async function reactivate(id) {
+      await fetch('/api/users/' + id + '/reactivate', { method: 'PUT' });
+      showMsg('Usuário reativado com sucesso.');
+      load();
+    }
+
+    async function approvePassword(id) {
+      await fetch('/api/users/' + id + '/approve-password', { method: 'PUT' });
+      showMsg('Nova senha aprovada com sucesso.');
+      load();
+    }
+
+    async function rejectPassword(id) {
+      if (!await confirm('Tem certeza que deseja recusar a nova senha solicitada?')) return;
+      await fetch('/api/users/' + id + '/reject-password', { method: 'PUT' });
+      showMsg('Solicitação de nova senha recusada.');
+      load();
+    }
+
+    async function changeRole(id, role) {
+      try {
+        const res = await fetch('/api/users/' + id + '/role', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role })
+        });
+        if (!res.ok) throw new Error('Falha ao atualizar nível de acesso.');
+        showMsg('Nível de acesso atualizado com sucesso.');
+      } catch (err) {
+        showMsg(err.message, true);
+        load();
+      }
+    }
+
+    // Card hover effects
+    (function addCardHover() {
+      const cards = [
+        { id: 'total-users-card', color: 'rgba(18,97,160,0.08)' },
+        { id: 'active-users-card', color: 'rgba(22,163,74,0.08)' },
+        { id: 'inactive-users-card', color: 'rgba(100,116,139,0.08)' },
+        { id: 'pending-users-card', color: 'rgba(217,119,6,0.08)' }
+      ];
+      cards.forEach(({ id, color }) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('mouseenter', () => { el.style.transform = 'translateY(-3px)'; el.style.boxShadow = `0 6px 18px ${color}`; });
+        el.addEventListener('mouseleave', () => { el.style.transform = ''; el.style.boxShadow = ''; });
+      });
+    })();
+
     load();
-  }
-}
-load();
-</script>
-<script src="timeout.js"></script>
-</body></html>
-
-
-
+  </script>
+  <script src="timeout.js"></script>
+</body>
+</html>

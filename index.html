@@ -68,9 +68,154 @@
       <section class="workspace">
         <header class="topbar"><button id="mobile-menu" class="icon-button mobile-only" aria-label="Abrir menu">=</button><div><p class="eyebrow">CADASTROS</p><h1 id="page-title">Motoristas</h1></div><button id="new-item-button" class="button button-primary">+ Novo motorista</button></header>
         <div class="content">
-          <section id="drivers-view" class="data-view"><section class="stats"><article class="clickable-card" id="total-drivers-card" style="cursor:pointer;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-left:4px solid #1261a0;" onclick="openDriversReport('all')"><span>Total de motoristas</span><strong id="total-drivers" style="color:#1261a0;">0</strong></article><article class="clickable-card" id="active-drivers-card" style="cursor:pointer;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-left:4px solid #16a34a;" onclick="openDriversReport('ativo')"><span>Ativos</span><strong id="active-drivers" style="color:#15803d;">0</strong></article><article class="clickable-card" id="pending-drivers-card" style="cursor:pointer;background:linear-gradient(135deg,#fffbeb,#fef3c7);border-left:4px solid #d97706;" onclick="openDriversReport('pendente')"><span>Documentação pendente</span><strong id="pending-drivers" style="color:#b45309;">0</strong></article><article class="clickable-card" id="expiring-cnh-card" style="cursor:pointer;background:linear-gradient(135deg,#fff8e1,#fff3e0);border-left:4px solid #ffb300;" onclick="openCnhReport()"><span>CNHs a vencer (60 dias)</span><strong id="expiring-drivers" style="color:#e65100;">0</strong></article></section><section class="card"><div class="card-header"><div><h2>Cadastro de motoristas</h2><p>Gerencie os profissionais vinculados à NJTransportes.</p></div><label class="search-field">🔍 <input id="driver-search" type="search" placeholder="Buscar por nome ou CPF" /></label></div><div class="table-wrap"><table><thead><tr><th>Motorista</th><th>CPF</th><th>CNH</th><th>Categoria</th><th>Vencimento</th><th>Status</th><th></th></tr></thead><tbody id="drivers-table"></tbody></table></div><div id="drivers-empty" class="empty-state"><div>📁</div><h3>Nenhum motorista cadastrado</h3><p>Comece adicionação o primeiro motorista da empresa.</p><button class="button button-primary" data-new="driver">+ Cadastrar motorista</button></div></section></section><section id="vehicles-view" class="data-view hidden"><section class="stats"><article><span>Total de veículos</span><strong id="total-vehicles">0</strong></article><article><span>Em operação</span><strong id="active-vehicles">0</strong></article><article><span>Em manutenção</span><strong id="maintenance-vehicles">0</strong></article></section><section class="card"><div class="card-header"><div><h2>Cadastro de veículos</h2><p>Controle a frota vinculada à NJTransportes.</p></div><label class="search-field">🔍 <input id="vehicle-search" type="search" placeholder="Buscar por placa ou modelo" /></label></div><div class="table-wrap"><table><thead><tr><th>Placa</th><th>Veículo</th><th>Tipo</th><th>Ano</th><th>Status</th><th></th></tr></thead><tbody id="vehicles-table"></tbody></table></div><div id="vehicles-empty" class="empty-state"><div>🚛</div><h3>Nenhum veículo cadastrado</h3><p>Comece adicionação o primeiro veículo da frota.</p><button class="button button-primary" data-new="vehicle">+ Cadastrar veículo</button></div></section></section>
-          <section id="clients-view" class="data-view hidden"><section class="card"><div class="card-header"><div><h2>Cadastro de clientes</h2><p>Destinos para roteirização de entregas.</p></div><button class="button button-primary" data-new="client">+ Novo cliente</button></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Endereço</th><th>Cidade/UF</th><th>Telefone</th><th></th></tr></thead><tbody id="clients-table"></tbody></table></div><div id="clients-empty" class="empty-state"><div>📍</div><h3>Nenhum cliente cadastrado</h3><p>Adicione os destinos das entregas.</p><button class="button button-primary" data-new="client">+ Cadastrar cliente</button></div></section></section>
-          <section id="suppliers-view" class="data-view hidden"><section class="card"><div class="card-header"><div><h2>Cadastro de fornecedores</h2><p>Gerencie fornecedores de peças e serviços.</p></div><button class="button button-primary" data-new="supplier">+ Novo fornecedor</button></div><div class="table-wrap"><table><thead><tr><th>Razão Social</th><th>Nome Fantasia</th><th>CNPJ</th><th>Telefone</th><th>Tipo</th><th></th></tr></thead><tbody id="suppliers-table"></tbody></table></div><div id="suppliers-empty" class="empty-state"><div>📦</div><h3>Nenhum fornecedor cadastrado</h3><p>Adicione fornecedores de peças ou serviços.</p><button class="button button-primary" data-new="supplier">+ Cadastrar fornecedor</button></div></section></section>
+          <section id="drivers-view" class="data-view">
+            <section class="stats" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+              <article class="clickable-card" id="total-drivers-card" style="cursor:pointer;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-left:4px solid #1261a0;" onclick="filterDriversByStatus('Todos')" title="Ver todos os motoristas"><span>Total de motoristas</span><strong id="total-drivers" style="color:#1261a0;">0</strong></article>
+              <article class="clickable-card" id="active-drivers-card" style="cursor:pointer;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-left:4px solid #16a34a;" onclick="filterDriversByStatus('Ativo')" title="Ver apenas motoristas ativos"><span>Ativos</span><strong id="active-drivers" style="color:#15803d;">0</strong></article>
+              <article class="clickable-card" id="inactive-drivers-card" style="cursor:pointer;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-left:4px solid #64748b;" onclick="filterDriversByStatus('Inativo')" title="Ver motoristas inativos"><span>Inativos</span><strong id="inactive-drivers" style="color:#475569;">0</strong></article>
+              <article class="clickable-card" id="pending-drivers-card" style="cursor:pointer;background:linear-gradient(135deg,#fffbeb,#fef3c7);border-left:4px solid #d97706;" onclick="filterDriversByStatus('Pendente')" title="Ver documentação pendente"><span>Doc. pendente</span><strong id="pending-drivers" style="color:#b45309;">0</strong></article>
+              <article class="clickable-card" id="expiring-cnh-card" style="cursor:pointer;background:linear-gradient(135deg,#fff8e1,#fff3e0);border-left:4px solid #ffb300;" onclick="openCnhReport()" title="Ver CNHs a vencer em 60 dias"><span>CNHs a vencer (60d)</span><strong id="expiring-drivers" style="color:#e65100;">0</strong></article>
+            </section>
+            <section class="card">
+              <div class="card-header" style="flex-wrap:wrap;gap:16px;">
+                <div><h2>Cadastro de motoristas</h2><p>Gerencie os profissionais vinculados à NJTransportes.</p></div>
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                  <label class="search-field" style="margin:0;">🔍 <input id="driver-search" type="search" placeholder="Buscar por nome ou CPF" /></label>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <label for="driver-status-filter" style="font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;margin:0;">Status:</label>
+                    <select id="driver-status-filter" aria-label="Filtrar por status" style="padding:10px 14px;border:1px solid #d6dbe2;border-radius:8px;font-weight:600;font-size:13px;color:var(--ink);background:#fff;cursor:pointer;">
+                      <option value="Ativo" selected>Apenas Ativos</option>
+                      <option value="Inativo">Apenas Inativos</option>
+                      <option value="Pendente">Doc. Pendente</option>
+                      <option value="Todos">Todos os Motoristas</option>
+                    </select>
+                  </div>
+                  <button class="button button-primary" data-new="driver">+ Novo motorista</button>
+                </div>
+              </div>
+              <div class="table-wrap"><table><thead><tr><th>Motorista</th><th>CPF</th><th>CNH</th><th>Categoria</th><th>Vencimento</th><th>Status</th><th></th></tr></thead><tbody id="drivers-table"></tbody></table></div>
+              <div id="drivers-empty" class="empty-state"><div>📁</div><h3 id="drivers-empty-title">Nenhum motorista cadastrado</h3><p id="drivers-empty-desc">Comece adicionando o primeiro motorista da empresa.</p><button class="button button-primary" data-new="driver">+ Cadastrar motorista</button></div>
+            </section>
+          </section>
+          <section id="vehicles-view" class="data-view hidden">
+            <section class="stats" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+              <article class="clickable-card" id="total-vehicles-card" style="cursor:pointer;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-left:4px solid #1261a0;" onclick="filterVehiclesByStatus('Todos')" title="Ver todos os veículos"><span>Total de veículos</span><strong id="total-vehicles" style="color:#1261a0;">0</strong></article>
+              <article class="clickable-card" id="active-vehicles-card" style="cursor:pointer;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-left:4px solid #16a34a;" onclick="filterVehiclesByStatus('Em operação')" title="Ver veículos em operação"><span>Em operação (Ativos)</span><strong id="active-vehicles" style="color:#15803d;">0</strong></article>
+              <article class="clickable-card" id="maintenance-vehicles-card" style="cursor:pointer;background:linear-gradient(135deg,#fffbeb,#fef3c7);border-left:4px solid #d97706;" onclick="filterVehiclesByStatus('Manutenção')" title="Ver veículos em manutenção"><span>Em manutenção</span><strong id="maintenance-vehicles" style="color:#b45309;">0</strong></article>
+              <article class="clickable-card" id="inactive-vehicles-card" style="cursor:pointer;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-left:4px solid #64748b;" onclick="filterVehiclesByStatus('Inativo')" title="Ver veículos inativos"><span>Inativos</span><strong id="inactive-vehicles" style="color:#475569;">0</strong></article>
+            </section>
+            <section class="card">
+              <div class="card-header" style="flex-wrap:wrap;gap:16px;">
+                <div><h2>Cadastro de veículos</h2><p>Controle a frota vinculada à NJTransportes.</p></div>
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                  <label class="search-field" style="margin:0;">🔍 <input id="vehicle-search" type="search" placeholder="Buscar por placa ou modelo" /></label>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <label for="vehicle-status-filter" style="font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;margin:0;">Status:</label>
+                    <select id="vehicle-status-filter" aria-label="Filtrar por status" style="padding:10px 14px;border:1px solid #d6dbe2;border-radius:8px;font-weight:600;font-size:13px;color:var(--ink);background:#fff;cursor:pointer;">
+                      <option value="Em operação" selected>Apenas Em operação (Ativos)</option>
+                      <option value="Manutenção">Em manutenção</option>
+                      <option value="Inativo">Apenas Inativos</option>
+                      <option value="Todos">Todos os Veículos</option>
+                    </select>
+                  </div>
+                  <button class="button button-primary" data-new="vehicle">+ Novo veículo</button>
+                </div>
+              </div>
+              <div class="table-wrap"><table><thead><tr><th>Placa</th><th>Veículo</th><th>Tipo</th><th>Ano</th><th>Status</th><th></th></tr></thead><tbody id="vehicles-table"></tbody></table></div>
+              <div id="vehicles-empty" class="empty-state"><div>🚛</div><h3 id="vehicles-empty-title">Nenhum veículo cadastrado</h3><p id="vehicles-empty-desc">Comece adicionando o primeiro veículo da frota.</p><button class="button button-primary" data-new="vehicle">+ Cadastrar veículo</button></div>
+            </section>
+          </section>
+          <section id="clients-view" class="data-view hidden">
+            <section class="stats">
+              <article class="clickable-card" id="total-clients-card" style="cursor:pointer;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-left:4px solid #1261a0;" onclick="filterClientsByStatus('Todos')" title="Ver todos os clientes"><span>Total de clientes</span><strong id="total-clients" style="color:#1261a0;">0</strong></article>
+              <article class="clickable-card" id="active-clients-card" style="cursor:pointer;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-left:4px solid #16a34a;" onclick="filterClientsByStatus('Ativo')" title="Ver apenas clientes ativos"><span>Clientes ativos</span><strong id="active-clients" style="color:#15803d;">0</strong></article>
+              <article class="clickable-card" id="inactive-clients-card" style="cursor:pointer;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-left:4px solid #64748b;" onclick="filterClientsByStatus('Inativo')" title="Ver clientes inativos"><span>Clientes inativos</span><strong id="inactive-clients" style="color:#475569;">0</strong></article>
+            </section>
+            <section class="card">
+              <div class="card-header" style="flex-wrap:wrap;gap:16px;">
+                <div><h2>Cadastro de clientes</h2><p>Destinos para roteirização de entregas.</p></div>
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                  <label class="search-field" style="margin:0;">🔍 <input id="client-search" type="search" placeholder="Buscar por cliente, cidade ou CPF/CNPJ" /></label>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <label for="client-status-filter" style="font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;margin:0;">Status:</label>
+                    <select id="client-status-filter" aria-label="Filtrar por status" style="padding:10px 14px;border:1px solid #d6dbe2;border-radius:8px;font-weight:600;font-size:13px;color:var(--ink);background:#fff;cursor:pointer;">
+                      <option value="Ativo" selected>Apenas Ativos</option>
+                      <option value="Inativo">Apenas Inativos</option>
+                      <option value="Todos">Todos os Clientes</option>
+                    </select>
+                  </div>
+                  <button class="button button-primary" data-new="client">+ Novo cliente</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Cliente</th>
+                      <th>Endereço</th>
+                      <th>Cidade/UF</th>
+                      <th>Telefone</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="clients-table"></tbody>
+                </table>
+              </div>
+              <div id="clients-empty" class="empty-state">
+                <div>📍</div>
+                <h3 id="clients-empty-title">Nenhum cliente cadastrado</h3>
+                <p id="clients-empty-desc">Adicione os destinos das entregas.</p>
+                <button class="button button-primary" data-new="client">+ Cadastrar cliente</button>
+              </div>
+            </section>
+          </section>
+          <section id="suppliers-view" class="data-view hidden">
+            <section class="stats">
+              <article class="clickable-card" id="total-suppliers-card" style="cursor:pointer;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-left:4px solid #1261a0;" onclick="filterSuppliersByStatus('Todos')" title="Ver todos os fornecedores"><span>Total de fornecedores</span><strong id="total-suppliers" style="color:#1261a0;">0</strong></article>
+              <article class="clickable-card" id="active-suppliers-card" style="cursor:pointer;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-left:4px solid #16a34a;" onclick="filterSuppliersByStatus('Ativo')" title="Ver apenas fornecedores ativos"><span>Fornecedores ativos</span><strong id="active-suppliers" style="color:#15803d;">0</strong></article>
+              <article class="clickable-card" id="inactive-suppliers-card" style="cursor:pointer;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-left:4px solid #64748b;" onclick="filterSuppliersByStatus('Inativo')" title="Ver fornecedores inativos"><span>Fornecedores inativos</span><strong id="inactive-suppliers" style="color:#475569;">0</strong></article>
+            </section>
+            <section class="card">
+              <div class="card-header" style="flex-wrap:wrap;gap:16px;">
+                <div><h2>Cadastro de fornecedores</h2><p>Gerencie fornecedores de peças e serviços.</p></div>
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                  <label class="search-field" style="margin:0;">🔍 <input id="supplier-search" type="search" placeholder="Buscar por fornecedor, CNPJ ou tipo" /></label>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <label for="supplier-status-filter" style="font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;margin:0;">Status:</label>
+                    <select id="supplier-status-filter" aria-label="Filtrar por status" style="padding:10px 14px;border:1px solid #d6dbe2;border-radius:8px;font-weight:600;font-size:13px;color:var(--ink);background:#fff;cursor:pointer;">
+                      <option value="Ativo" selected>Apenas Ativos</option>
+                      <option value="Inativo">Apenas Inativos</option>
+                      <option value="Todos">Todos os Fornecedores</option>
+                    </select>
+                  </div>
+                  <button class="button button-primary" data-new="supplier">+ Novo fornecedor</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Razão Social</th>
+                      <th>Nome Fantasia</th>
+                      <th>CNPJ</th>
+                      <th>Telefone</th>
+                      <th>Tipo</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="suppliers-table"></tbody>
+                </table>
+              </div>
+              <div id="suppliers-empty" class="empty-state">
+                <div>📦</div>
+                <h3 id="suppliers-empty-title">Nenhum fornecedor cadastrado</h3>
+                <p id="suppliers-empty-desc">Adicione fornecedores de peças ou serviços.</p>
+                <button class="button button-primary" data-new="supplier">+ Cadastrar fornecedor</button>
+              </div>
+            </section>
+          </section>
         </div>
       </section>
     </main>
