@@ -109,16 +109,17 @@ th,td{padding:14px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:13p
 <thead>
 <tr>
 <th>Data</th>
-<th>Motorista</th>
+<th>CTRC</th>
 <th>Placa</th>
+<th>Motorista</th>
 <th>Cliente</th>
 <th>Destino</th>
 <th>Frete</th>
 <th>Comissão</th>
 <th>Pedágios</th>
+<th>INSS</th>
 <th>SEST/SENAT</th>
 <th>IRRF</th>
-<th>INSS</th>
 </tr>
 </thead>
 <tbody id="rows">
@@ -160,7 +161,7 @@ function render(){
   q('#s-bruto').textContent=m(sf);
   q('#s-comissao-card').textContent=m(comissao);
 
-  q('#rows').innerHTML=list.map(r=>'<tr><td>'+fmtDate(r.date)+'</td><td>'+r.driver_name+'</td><td>'+r.plate+'</td><td>'+r.client_name+'</td><td>'+r.destination+'</td><td>'+m(r.freight)+'</td><td>'+m(r.freight*.15)+'</td><td>'+m(r.tolls)+'</td><td>'+m(r.sest_senat)+'</td><td>'+m(r.irrf)+'</td><td>'+m(r.inss)+'</td></tr>').join('')
+  q('#rows').innerHTML=list.map(r=>'<tr><td>'+fmtDate(r.date)+'</td><td><strong>'+(r.ctrc||'-')+'</strong></td><td>'+(r.plate||'-')+'</td><td>'+(r.driver_name||'-')+'</td><td>'+(r.client_name||'-')+'</td><td>'+(r.destination||'-')+'</td><td>'+m(r.freight)+'</td><td>'+m(r.freight*.15)+'</td><td>'+m(r.tolls)+'</td><td>'+m(r.inss)+'</td><td>'+m(r.sest_senat)+'</td><td>'+m(r.irrf)+'</td></tr>').join('')
 }
 
 let _n=new Date(),_e=new Date(_n),_s=new Date(_n);_s.setDate(_s.getDate()-30);q('#start').value=_s.toISOString().substring(0,10);q('#end').value=_e.toISOString().substring(0,10);

@@ -24,7 +24,7 @@ async function initializeDatabase() {
     CREATE TABLE IF NOT EXISTS vehicles (id UUID PRIMARY KEY, plate TEXT UNIQUE NOT NULL, model TEXT NOT NULL, type TEXT NOT NULL, year INTEGER NOT NULL, renavam TEXT, status TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());
      CREATE TABLE IF NOT EXISTS clients (id UUID PRIMARY KEY, name TEXT NOT NULL, document TEXT, phone TEXT, address TEXT NOT NULL, number TEXT, neighborhood TEXT, city TEXT NOT NULL, state TEXT NOT NULL, zip_code TEXT, reference TEXT, status TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());
      CREATE TABLE IF NOT EXISTS suppliers (id UUID PRIMARY KEY, name TEXT NOT NULL, document TEXT, address TEXT NOT NULL, supplier_type TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'Ativo', created_at TIMESTAMPTZ DEFAULT NOW());
-     CREATE TABLE IF NOT EXISTS freight_entries (id UUID PRIMARY KEY, date DATE NOT NULL, driver_id UUID REFERENCES drivers(id), vehicle_id UUID REFERENCES vehicles(id), client_id UUID REFERENCES clients(id), destination TEXT NOT NULL, freight NUMERIC(12,2) NOT NULL, tolls NUMERIC(12,2) DEFAULT 0, expenses NUMERIC(12,2) DEFAULT 0, sest_senat NUMERIC(12,2) DEFAULT 0, irrf NUMERIC(12,2) DEFAULT 0, inss NUMERIC(12,2) DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS partner_stations (id UUID PRIMARY KEY, name TEXT NOT NULL, cnpj TEXT, phone TEXT, address TEXT, city TEXT, state TEXT, created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS fuelings (id UUID PRIMARY KEY, date DATE NOT NULL, vehicle_id UUID REFERENCES vehicles(id), mileage NUMERIC, price_per_liter NUMERIC, quantity_liters NUMERIC, driver_id UUID REFERENCES drivers(id), station_id UUID REFERENCES partner_stations(id), notes TEXT, created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS maintenance_entries (id UUID PRIMARY KEY, entry_date DATE NOT NULL, exit_date DATE, vehicle_id UUID REFERENCES vehicles(id), supplier_id UUID REFERENCES suppliers(id), maintenance_type TEXT NOT NULL, category TEXT NOT NULL, description TEXT, cost NUMERIC(12,2) DEFAULT 0, status TEXT NOT NULL DEFAULT 'Em andamento', created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS audit_log (id UUID PRIMARY KEY, user_id UUID REFERENCES users(id) ON DELETE SET NULL, user_name TEXT, action TEXT NOT NULL, resource TEXT NOT NULL, resource_id UUID, detail JSONB, created_at TIMESTAMPTZ DEFAULT NOW()); ALTER TABLE users ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT FALSE; ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE; ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'Operador'; ALTER TABLE users ADD COLUMN IF NOT EXISTS photo TEXT; ALTER TABLE drivers ADD COLUMN IF NOT EXISTS zip_code TEXT, ADD COLUMN IF NOT EXISTS address TEXT, ADD COLUMN IF NOT EXISTS number TEXT, ADD COLUMN IF NOT EXISTS neighborhood TEXT, ADD COLUMN IF NOT EXISTS city TEXT, ADD COLUMN IF NOT EXISTS state TEXT; ALTER TABLE drivers ADD COLUMN IF NOT EXISTS photo TEXT; ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_password_hash TEXT; ALTER TABLE freight_entries ADD COLUMN IF NOT EXISTS sest_senat NUMERIC(12,2) DEFAULT 0; ALTER TABLE freight_entries ADD COLUMN IF NOT EXISTS irrf NUMERIC(12,2) DEFAULT 0; ALTER TABLE freight_entries ADD COLUMN IF NOT EXISTS inss NUMERIC(12,2) DEFAULT 0; ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS trade_name TEXT, ADD COLUMN IF NOT EXISTS phone TEXT, ADD COLUMN IF NOT EXISTS email TEXT; ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS zip_code TEXT, ADD COLUMN IF NOT EXISTS number TEXT, ADD COLUMN IF NOT EXISTS neighborhood TEXT, ADD COLUMN IF NOT EXISTS city TEXT, ADD COLUMN IF NOT EXISTS state TEXT, ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'Ativo'; ALTER TABLE partner_stations ADD COLUMN IF NOT EXISTS zip_code TEXT, ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'Ativo'; ALTER TABLE materials ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'Ativo'; CREATE TABLE IF NOT EXISTS materials (id UUID PRIMARY KEY, name TEXT NOT NULL, description TEXT, unit TEXT, min_stock NUMERIC(12,2) DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS stock_movements (id UUID PRIMARY KEY, date DATE NOT NULL, type TEXT NOT NULL, material_id UUID REFERENCES materials(id), quantity NUMERIC(12,2) NOT NULL, invoice_number TEXT, supplier_id UUID REFERENCES suppliers(id), value NUMERIC(12,2), vehicle_id UUID REFERENCES vehicles(id), created_at TIMESTAMPTZ DEFAULT NOW());`);
+     CREATE TABLE IF NOT EXISTS freight_entries (id UUID PRIMARY KEY, date DATE NOT NULL, ctrc TEXT, driver_id UUID REFERENCES drivers(id), vehicle_id UUID REFERENCES vehicles(id), client_id UUID REFERENCES clients(id), destination TEXT NOT NULL, freight NUMERIC(12,2) NOT NULL, tolls NUMERIC(12,2) DEFAULT 0, expenses NUMERIC(12,2) DEFAULT 0, sest_senat NUMERIC(12,2) DEFAULT 0, irrf NUMERIC(12,2) DEFAULT 0, inss NUMERIC(12,2) DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS partner_stations (id UUID PRIMARY KEY, name TEXT NOT NULL, cnpj TEXT, phone TEXT, address TEXT, city TEXT, state TEXT, created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS fuelings (id UUID PRIMARY KEY, date DATE NOT NULL, vehicle_id UUID REFERENCES vehicles(id), mileage NUMERIC, price_per_liter NUMERIC, quantity_liters NUMERIC, driver_id UUID REFERENCES drivers(id), station_id UUID REFERENCES partner_stations(id), notes TEXT, created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS maintenance_entries (id UUID PRIMARY KEY, entry_date DATE NOT NULL, exit_date DATE, vehicle_id UUID REFERENCES vehicles(id), supplier_id UUID REFERENCES suppliers(id), maintenance_type TEXT NOT NULL, category TEXT NOT NULL, description TEXT, cost NUMERIC(12,2) DEFAULT 0, status TEXT NOT NULL DEFAULT 'Em andamento', created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS audit_log (id UUID PRIMARY KEY, user_id UUID REFERENCES users(id) ON DELETE SET NULL, user_name TEXT, action TEXT NOT NULL, resource TEXT NOT NULL, resource_id UUID, detail JSONB, created_at TIMESTAMPTZ DEFAULT NOW()); ALTER TABLE users ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT FALSE; ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE; ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'Operador'; ALTER TABLE users ADD COLUMN IF NOT EXISTS photo TEXT; ALTER TABLE drivers ADD COLUMN IF NOT EXISTS zip_code TEXT, ADD COLUMN IF NOT EXISTS address TEXT, ADD COLUMN IF NOT EXISTS number TEXT, ADD COLUMN IF NOT EXISTS neighborhood TEXT, ADD COLUMN IF NOT EXISTS city TEXT, ADD COLUMN IF NOT EXISTS state TEXT; ALTER TABLE drivers ADD COLUMN IF NOT EXISTS photo TEXT; ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_password_hash TEXT; ALTER TABLE freight_entries ADD COLUMN IF NOT EXISTS ctrc TEXT; CREATE UNIQUE INDEX IF NOT EXISTS idx_freight_entries_ctrc_unique ON freight_entries (TRIM(UPPER(ctrc))) WHERE ctrc IS NOT NULL AND TRIM(ctrc) <> ''; ALTER TABLE freight_entries ADD COLUMN IF NOT EXISTS sest_senat NUMERIC(12,2) DEFAULT 0; ALTER TABLE freight_entries ADD COLUMN IF NOT EXISTS irrf NUMERIC(12,2) DEFAULT 0; ALTER TABLE freight_entries ADD COLUMN IF NOT EXISTS inss NUMERIC(12,2) DEFAULT 0; ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS trade_name TEXT, ADD COLUMN IF NOT EXISTS phone TEXT, ADD COLUMN IF NOT EXISTS email TEXT; ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS zip_code TEXT, ADD COLUMN IF NOT EXISTS number TEXT, ADD COLUMN IF NOT EXISTS neighborhood TEXT, ADD COLUMN IF NOT EXISTS city TEXT, ADD COLUMN IF NOT EXISTS state TEXT, ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'Ativo'; ALTER TABLE partner_stations ADD COLUMN IF NOT EXISTS zip_code TEXT, ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'Ativo'; ALTER TABLE materials ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'Ativo'; CREATE TABLE IF NOT EXISTS materials (id UUID PRIMARY KEY, name TEXT NOT NULL, description TEXT, unit TEXT, min_stock NUMERIC(12,2) DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS stock_movements (id UUID PRIMARY KEY, date DATE NOT NULL, type TEXT NOT NULL, material_id UUID REFERENCES materials(id), quantity NUMERIC(12,2) NOT NULL, invoice_number TEXT, supplier_id UUID REFERENCES suppliers(id), value NUMERIC(12,2), vehicle_id UUID REFERENCES vehicles(id), created_at TIMESTAMPTZ DEFAULT NOW());`);
   await seedDefaultAdmin();
 }
 
@@ -101,6 +101,36 @@ async function api(request, response, url) {
       return json(response, 500, { connected: false, last_update: null });
     }
   }
+  if (route === '/api/check-ctrc' && method === 'GET') {
+    const ctrc = url.searchParams.get('ctrc');
+    const excludeId = url.searchParams.get('excludeId');
+    if (!ctrc || !ctrc.trim()) {
+      return json(response, 200, { exists: false });
+    }
+    const clean = ctrc.trim();
+    let query = `
+      SELECT f.id, f.date, f.ctrc, f.destination, d.name AS driver_name, v.plate
+      FROM freight_entries f
+      LEFT JOIN drivers d ON d.id = f.driver_id
+      LEFT JOIN vehicles v ON v.id = f.vehicle_id
+      WHERE TRIM(UPPER(f.ctrc)) = TRIM(UPPER($1))
+    `;
+    const params = [clean];
+    if (excludeId && excludeId.trim()) {
+      query += ' AND f.id <> $2';
+      params.push(excludeId.trim());
+    }
+    query += ' LIMIT 1';
+    try {
+      const res = await pool.query(query, params);
+      if (res.rows.length > 0) {
+        return json(response, 200, { exists: true, entry: res.rows[0] });
+      }
+      return json(response, 200, { exists: false });
+    } catch (e) {
+      return json(response, 500, { error: 'Erro ao verificar CTRC.' });
+    }
+  }
   const resource = route.match(/^\/api\/(drivers|vehicles|clients|suppliers|freight_entries|partner_stations|fuelings|maintenance_entries|materials|stock_movements)(?:\/([\w-]+))?$/); if (!resource) return false;
   // Dedicated photo endpoint: PUT /api/drivers/:id/photo
   if (route.match(/^\/api\/drivers\/[\w-]+\/photo$/) && method === 'PUT') {
@@ -113,7 +143,7 @@ async function api(request, response, url) {
     await logAudit(performedById, performedByName, 'UPDATE', 'drivers', driverId, { action: 'photo_update' });
     return json(response, 200, { id: driverId, photo: body.photo });
   }
-  const [ , table, id ] = resource; const fields = table === 'drivers' ? ['name', 'cpf', 'cnh', 'category', 'expiry', 'status', 'phone', 'zip_code', 'address', 'number', 'neighborhood', 'city', 'state', 'photo'] : table === 'vehicles' ? ['plate', 'model', 'type', 'year', 'renavam', 'status'] : table === 'suppliers' ? ['name', 'trade_name', 'document', 'phone', 'email', 'address', 'zip_code', 'number', 'neighborhood', 'city', 'state', 'supplier_type', 'status'] : table === 'freight_entries' ? ['date','driver_id','vehicle_id','client_id','destination','freight','tolls','expenses','sest_senat','irrf','inss'] : table === 'fuelings' ? ['date','vehicle_id','mileage','price_per_liter','quantity_liters','driver_id','station_id','notes'] : table === 'partner_stations' ? ['name','cnpj','phone','address','city','state','zip_code','status'] : table === 'maintenance_entries' ? ['entry_date','exit_date','vehicle_id','supplier_id','maintenance_type','category','description','cost','status'] : table === 'materials' ? ['name','description','unit','min_stock','status'] : table === 'stock_movements' ? ['date','type','material_id','quantity','invoice_number','supplier_id','value','vehicle_id'] : ['name', 'document', 'phone', 'address', 'number', 'neighborhood', 'city', 'state', 'zip_code', 'reference', 'status'];
+  const [ , table, id ] = resource; const fields = table === 'drivers' ? ['name', 'cpf', 'cnh', 'category', 'expiry', 'status', 'phone', 'zip_code', 'address', 'number', 'neighborhood', 'city', 'state', 'photo'] : table === 'vehicles' ? ['plate', 'model', 'type', 'year', 'renavam', 'status'] : table === 'suppliers' ? ['name', 'trade_name', 'document', 'phone', 'email', 'address', 'zip_code', 'number', 'neighborhood', 'city', 'state', 'supplier_type', 'status'] : table === 'freight_entries' ? ['date','ctrc','driver_id','vehicle_id','client_id','destination','freight','tolls','expenses','sest_senat','irrf','inss'] : table === 'fuelings' ? ['date','vehicle_id','mileage','price_per_liter','quantity_liters','driver_id','station_id','notes'] : table === 'partner_stations' ? ['name','cnpj','phone','address','city','state','zip_code','status'] : table === 'maintenance_entries' ? ['entry_date','exit_date','vehicle_id','supplier_id','maintenance_type','category','description','cost','status'] : table === 'materials' ? ['name','description','unit','min_stock','status'] : table === 'stock_movements' ? ['date','type','material_id','quantity','invoice_number','supplier_id','value','vehicle_id'] : ['name', 'document', 'phone', 'address', 'number', 'neighborhood', 'city', 'state', 'zip_code', 'reference', 'status'];
   if (method === 'GET') { const result = table === 'freight_entries' ? await pool.query('SELECT f.*, d.name AS driver_name, v.plate, c.name AS client_name FROM freight_entries f LEFT JOIN drivers d ON d.id=f.driver_id LEFT JOIN vehicles v ON v.id=f.vehicle_id LEFT JOIN clients c ON c.id=f.client_id ORDER BY f.created_at DESC') : table === 'fuelings' ? await pool.query('SELECT f.*, v.plate, d.name AS driver_name, s.name AS station_name FROM fuelings f LEFT JOIN vehicles v ON v.id=f.vehicle_id LEFT JOIN drivers d ON d.id=f.driver_id LEFT JOIN partner_stations s ON s.id=f.station_id ORDER BY f.created_at DESC') : table === 'maintenance_entries' ? await pool.query('SELECT m.*, v.plate, v.model, s.name AS supplier_name FROM maintenance_entries m LEFT JOIN vehicles v ON v.id=m.vehicle_id LEFT JOIN suppliers s ON s.id=m.supplier_id ORDER BY m.created_at DESC') : table === 'stock_movements' ? await pool.query('SELECT sm.*, m.name AS material_name, s.name AS supplier_name, v.plate AS vehicle_plate FROM stock_movements sm LEFT JOIN materials m ON m.id=sm.material_id LEFT JOIN suppliers s ON s.id=sm.supplier_id LEFT JOIN vehicles v ON v.id=sm.vehicle_id ORDER BY sm.created_at DESC') : table === 'materials' ? await pool.query('SELECT m.*, COALESCE((SELECT SUM(CASE WHEN type = \'Entrada\' THEN quantity ELSE -quantity END) FROM stock_movements sm WHERE sm.material_id = m.id), 0) AS current_stock FROM materials m ORDER BY m.created_at DESC') : await pool.query(`SELECT * FROM ${table} ORDER BY created_at DESC`); return json(response, 200, result.rows); }
   if (method === 'DELETE' && id) {
     try {
@@ -133,6 +163,15 @@ async function api(request, response, url) {
         return json(response, 400, { error: 'Quantidade insuficiente em estoque para realizar esta saída.' });
       }
     }
+    if (table === 'freight_entries') {
+      data.ctrc = data.ctrc && String(data.ctrc).trim() !== '' ? String(data.ctrc).trim() : null;
+      if (data.ctrc) {
+        const existing = await pool.query('SELECT id FROM freight_entries WHERE TRIM(UPPER(ctrc)) = TRIM(UPPER($1))', [data.ctrc]);
+        if (existing.rows.length > 0) {
+          return json(response, 400, { error: `Já existe um frete cadastrado com o CTRC "${data.ctrc}". Não são permitidos lançamentos em duplicidade.` });
+        }
+      }
+    }
     const recordId = crypto.randomUUID();
     const values = [recordId, ...fields.map(field => data[field] ?? null)];
     try {
@@ -140,7 +179,8 @@ async function api(request, response, url) {
       await logAudit(performedById, performedByName, 'CREATE', table, recordId, data);
       return json(response, 201, { id: recordId, ...data });
     } catch (error) {
-      return json(response, error.code === '23505' ? 409 : 500, { error: error.code === '23505' ? 'Já existe um cadastro com este identificador.' : 'Não foi possível salvar.' });
+      const isCtrcDup = error.code === '23505' && (String(error.detail).includes('ctrc') || String(error.constraint).includes('ctrc'));
+      return json(response, error.code === '23505' ? 409 : 500, { error: isCtrcDup ? 'Já existe um lançamento com este CTRC. Não são permitidos lançamentos em duplicidade.' : (error.code === '23505' ? 'Já existe um cadastro com este identificador.' : 'Não foi possível salvar.') });
     }
   }
   if (method === 'PUT' && id) {
@@ -150,13 +190,23 @@ async function api(request, response, url) {
         return json(response, 400, { error: 'Não é possível inativar um material que possui saldo em estoque.' });
       }
     }
+    if (table === 'freight_entries') {
+      data.ctrc = data.ctrc && String(data.ctrc).trim() !== '' ? String(data.ctrc).trim() : null;
+      if (data.ctrc) {
+        const existing = await pool.query('SELECT id FROM freight_entries WHERE TRIM(UPPER(ctrc)) = TRIM(UPPER($1)) AND id <> $2', [data.ctrc, id]);
+        if (existing.rows.length > 0) {
+          return json(response, 400, { error: `Já existe outro frete cadastrado com o CTRC "${data.ctrc}". Não são permitidos lançamentos em duplicidade.` });
+        }
+      }
+    }
     const values = fields.map(field => data[field] ?? null);
     try {
       await pool.query(`UPDATE ${table} SET ${fields.map((field, index) => `${field} = $${index + 1}`).join(', ')} WHERE id = $${fields.length + 1}`, [...values, id]);
       await logAudit(performedById, performedByName, 'UPDATE', table, id, data);
       return json(response, 200, { id, ...data });
     } catch (error) {
-      return json(response, error.code === '23505' ? 409 : 500, { error: error.code === '23505' ? 'Já existe um cadastro com este identificador.' : 'Não foi possível atualizar.' });
+      const isCtrcDup = error.code === '23505' && (String(error.detail).includes('ctrc') || String(error.constraint).includes('ctrc'));
+      return json(response, error.code === '23505' ? 409 : 500, { error: isCtrcDup ? 'Já existe um lançamento com este CTRC. Não são permitidos lançamentos em duplicidade.' : (error.code === '23505' ? 'Já existe um cadastro com este identificador.' : 'Não foi possível atualizar.') });
     }
   }
   return json(response, 405, { error: 'Método não permitido.' });

@@ -864,6 +864,7 @@ function buildClientPopoverHtml(c, freights) {
                 <span class="popover-entry-val">R$ ${formatMoney(f.freight)}</span>
               </div>
               <div class="popover-entry-detail">
+                ${f.ctrc ? `<span><strong>CTRC:</strong> ${f.ctrc}</span>` : ''}
                 <span><strong>Destino:</strong> ${f.destination || '-'}</span>
                 <span><strong>Placa:</strong> ${f.plate || '-'}</span>
                 <span><strong>Motorista:</strong> ${f.driver_name || '-'}</span>

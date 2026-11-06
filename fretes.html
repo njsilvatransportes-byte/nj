@@ -11,9 +11,10 @@
     .topbar a{display:inline-flex;align-items:center;text-decoration:none;padding:9px 14px;border-radius:7px;font-weight:700;background:#eef2f6;color:#1f2937}
     .page{padding:36px}
     .card{max-width:none;padding:28px}
-    .form-stack{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+    .form-stack{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+    .form-col{display:flex;flex-direction:column;gap:16px}
     .form-stack textarea{min-height:90px}
-    .form-actions{grid-column:1/-1;display:flex;gap:8px;align-items:center;margin-top:4px}
+    .form-actions{grid-column:1/-1;display:flex;gap:8px;align-items:center;margin-top:8px}
     .form-actions button{padding:9px 14px}
     #cancel-edit{display:none}
     .actions{display:flex;gap:8px;align-items:center}
@@ -44,45 +45,55 @@
       <form id="f" class="form-stack">
         <input type="hidden" name="id" id="frete-id">
 
-        <label>Data
-          <input name="date" type="date" required>
-        </label>
+        <!-- Coluna 1: Dados do Transporte / Identificação -->
+        <div class="form-col">
+          <label>Data
+            <input name="date" type="date" required>
+          </label>
 
-        <label>Motorista
-          <select name="driver_id" id="d" required></select>
-        </label>
+          <label>CTRC <small style="font-weight:normal;color:#6b7280;">(Contrato de Transporte Rodoviário)</small>
+            <input name="ctrc" id="ctrc" placeholder="Ex: 001234" required autocomplete="off">
+          </label>
 
-        <label>Placa
-          <select name="vehicle_id" id="v" required></select>
-        </label>
+          <label>Placa
+            <select name="vehicle_id" id="v" required></select>
+          </label>
 
-        <label>Cliente
-          <select name="client_id" id="c" required></select>
-        </label>
+          <label>Motorista
+            <select name="driver_id" id="d" required></select>
+          </label>
 
-        <label>Destino
-          <input name="destination" required oninput="this.value=this.value.toUpperCase()">
-        </label>
+          <label>Cliente
+            <select name="client_id" id="c" required></select>
+          </label>
 
-        <label>Frete
-          <input name="freight" type="number" step=".01" required>
-        </label>
+          <label>Destino
+            <input name="destination" required oninput="this.value=this.value.toUpperCase()">
+          </label>
+        </div>
 
-        <label>Pedágios
-          <input name="tolls" type="number" step=".01" value="0">
-        </label>
+        <!-- Coluna 2: Valores Financeiros e Deduções -->
+        <div class="form-col">
+          <label>Frete
+            <input name="freight" type="number" step=".01" required>
+          </label>
 
-        <label>SEST/SENAT
-          <input name="sest_senat" type="number" step=".01" value="0">
-        </label>
+          <label>Pedágios
+            <input name="tolls" type="number" step=".01" value="0">
+          </label>
 
-        <label>IRRF
-          <input name="irrf" type="number" step=".01" value="0">
-        </label>
+          <label>INSS
+            <input name="inss" type="number" step=".01" value="0">
+          </label>
 
-        <label>INSS
-          <input name="inss" type="number" step=".01" value="0">
-        </label>
+          <label>SEST/SENAT
+            <input name="sest_senat" type="number" step=".01" value="0">
+          </label>
+
+          <label>IRRF
+            <input name="irrf" type="number" step=".01" value="0">
+          </label>
+        </div>
 
         <div class="form-actions">
           <button id="save-button" class="button button-primary" type="submit">Salvar lançamento</button>
@@ -100,15 +111,16 @@
           <thead>
             <tr>
               <th>Data</th>
-              <th>Motorista</th>
+              <th>CTRC</th>
               <th>Placa</th>
+              <th>Motorista</th>
               <th>Cliente</th>
               <th>Destino</th>
               <th>Frete</th>
               <th>Pedágios</th>
+              <th>INSS</th>
               <th>SEST/SENAT</th>
               <th>IRRF</th>
-              <th>INSS</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -166,15 +178,16 @@
       q('#list').innerHTML = fretes.map(x => `
         <tr>
           <td>${fmtDate(x.date)}</td>
-          <td>${esc(x.driver_name || '-')}</td>
+          <td><strong>${esc(x.ctrc || '-')}</strong></td>
           <td>${esc(x.plate || '-')}</td>
+          <td>${esc(x.driver_name || '-')}</td>
           <td>${esc(x.client_name || '-')}</td>
           <td>${esc(x.destination || '-')}</td>
           <td>${money(x.freight)}</td>
           <td>${money(x.tolls)}</td>
+          <td>${money(x.inss)}</td>
           <td>${money(x.sest_senat)}</td>
           <td>${money(x.irrf)}</td>
-          <td>${money(x.inss)}</td>
           <td class="actions">
             <button class="edit" type="button" onclick="editFrete('${esc(x.id)}')">Editar</button>
             <button class="delete" type="button" onclick="deleteFrete('${esc(x.id)}')">Excluir</button>
@@ -182,6 +195,58 @@
         </tr>
       `).join('');
     }
+
+    function checkCtrcDuplicity(strictMode = false){
+      const ctrcEl = q('#ctrc');
+      const val = ctrcEl.value.trim().toUpperCase();
+      const currentId = q('#frete-id').value;
+
+      if(!val){
+        ctrcEl.setCustomValidity('');
+        ctrcEl.style.borderColor = '';
+        ctrcEl.style.backgroundColor = '';
+        ctrcEl.style.color = '';
+        if(q('#msg').textContent.includes('CTRC')) showMessage('');
+        return true;
+      }
+
+      const duplicate = fretes.find(x =>
+        String(x.ctrc || '').trim().toUpperCase() === val &&
+        String(x.id) !== String(currentId)
+      );
+
+      if(duplicate){
+        const info = `CTRC "${val}" já cadastrado em ${fmtDate(duplicate.date)} (${duplicate.driver_name || 'Motorista'} - ${duplicate.plate || 'Placa'})!`;
+        ctrcEl.style.borderColor = '#b42318';
+        ctrcEl.style.backgroundColor = '#fff5f5';
+        ctrcEl.style.color = '#b42318';
+        ctrcEl.setCustomValidity(info);
+        showMessage('❌ ' + info + ' Não é permitido lançamentos com CTRC duplicado.', true);
+
+        if(strictMode){
+          alert(`❌ CTRC JÁ CADASTRADO E GRAVADO!\n\nO número de CTRC "${val}" já está lançado no sistema:\n• Data: ${fmtDate(duplicate.date)}\n• Placa: ${duplicate.plate || '-'}\n• Motorista: ${duplicate.driver_name || '-'}\n• Destino: ${duplicate.destination || '-'}\n\nO sistema NÃO permite digitar nem gravar CTRC duplicado.\nO campo foi limpo para que você digite o número correto.`);
+          ctrcEl.value = '';
+          ctrcEl.style.borderColor = '';
+          ctrcEl.style.backgroundColor = '';
+          ctrcEl.style.color = '';
+          ctrcEl.setCustomValidity('');
+          setTimeout(() => ctrcEl.focus(), 50);
+        }
+        return false;
+      } else {
+        ctrcEl.setCustomValidity('');
+        ctrcEl.style.borderColor = '';
+        ctrcEl.style.backgroundColor = '';
+        ctrcEl.style.color = '';
+        if(q('#msg').textContent.includes('CTRC')) showMessage('');
+        return true;
+      }
+    }
+
+    q('#ctrc').addEventListener('input', () => checkCtrcDuplicity(false));
+    q('#ctrc').addEventListener('blur', () => {
+      if (q('#ctrc').value.trim()) checkCtrcDuplicity(true);
+    });
 
     function startEdit(item){
       q('#frete-id').value = item.id;
@@ -208,6 +273,10 @@
     function cancelEditFrete(){
       q('#f').reset();
       q('#frete-id').value = '';
+      q('#ctrc').setCustomValidity('');
+      q('#ctrc').style.borderColor = '';
+      q('#ctrc').style.backgroundColor = '';
+      q('#ctrc').style.color = '';
       q('#form-title').textContent = 'Lançamento de frete';
       q('#save-button').textContent = 'Salvar lançamento';
       q('#cancel-edit').style.display = 'none';
@@ -253,7 +322,39 @@
     q('#f').onsubmit = async e => {
       e.preventDefault();
 
+      const ctrcEl = q('#ctrc');
+      const val = ctrcEl.value.trim().toUpperCase();
       const id = q('#frete-id').value;
+
+      if(!val){
+        alert('Por favor, digite o número do CTRC.');
+        ctrcEl.focus();
+        return;
+      }
+
+      // Validação local imediata
+      if(!checkCtrcDuplicity(true)){
+        return;
+      }
+
+      // Validação em tempo real direto no banco de dados via API
+      try {
+        const checkRes = await fetch(`/api/check-ctrc?ctrc=${encodeURIComponent(val)}&excludeId=${encodeURIComponent(id)}`);
+        if (checkRes.ok) {
+          const chk = await checkRes.json();
+          if (chk.exists) {
+            const entry = chk.entry;
+            alert(`❌ CTRC JÁ CADASTRADO E GRAVADO NO BANCO DE DADOS!\n\nO CTRC "${val}" já está gravado no sistema:\n• Data: ${fmtDate(entry.date)}\n• Placa: ${entry.plate || '-'}\n• Motorista: ${entry.driver_name || '-'}\n• Destino: ${entry.destination || '-'}\n\nO sistema não permite gravar outro frete com este mesmo CTRC.\nO campo foi limpo para nova digitação.`);
+            ctrcEl.value = '';
+            ctrcEl.focus();
+            showMessage(`O CTRC "${val}" já está gravado no banco de dados e foi rejeitado.`, true);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Verificação online de CTRC falhou:', err);
+      }
+
       const data = Object.fromEntries(new FormData(e.target));
       delete data.id;
 
@@ -279,10 +380,68 @@
         cancelEditFrete();
         showMessage(id ? 'Frete atualizado com sucesso!' : 'Frete salvo com sucesso!');
         await load();
+        q('input[name="date"]').focus();
       }catch(error){
         showMessage(error.message, true);
+        if (error.message.includes('CTRC')) {
+          alert('❌ ERRO AO GRAVAR:\n\n' + error.message);
+          ctrcEl.value = '';
+          ctrcEl.focus();
+        }
       }
     };
+
+    // Navegação com a tecla Enter entre os campos até o botão Salvar
+    const enterNavSelectors = [
+      'input[name="date"]',
+      'input[name="ctrc"]',
+      'select[name="vehicle_id"]',
+      'select[name="driver_id"]',
+      'select[name="client_id"]',
+      'input[name="destination"]',
+      'input[name="freight"]',
+      'input[name="tolls"]',
+      'input[name="inss"]',
+      'input[name="sest_senat"]',
+      'input[name="irrf"]',
+      '#save-button'
+    ];
+
+    q('#f').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        const target = e.target;
+        if (target.id === 'save-button') {
+          return;
+        }
+
+        // Se estiver no campo CTRC, valida antes de avançar
+        if (target.id === 'ctrc') {
+          const val = target.value.trim().toUpperCase();
+          if (!val) {
+            e.preventDefault();
+            showMessage('Por favor, informe o número do CTRC.', true);
+            target.reportValidity();
+            return;
+          }
+          if (!checkCtrcDuplicity(true)) {
+            e.preventDefault();
+            return;
+          }
+        }
+
+        const currentIndex = enterNavSelectors.findIndex(sel => target.matches(sel));
+        if (currentIndex !== -1 && currentIndex < enterNavSelectors.length - 1) {
+          e.preventDefault();
+          const nextEl = q(enterNavSelectors[currentIndex + 1]);
+          if (nextEl) {
+            nextEl.focus();
+            if (typeof nextEl.select === 'function' && nextEl.type !== 'date') {
+              nextEl.select();
+            }
+          }
+        }
+      }
+    });
 
     Promise.all([
       l('drivers','#d','name'),
